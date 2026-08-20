@@ -240,12 +240,27 @@ export async function cancelScheduledReminders(appointmentId: string) {
 
 const SAFETY_WINDOW_MINUTES = 45;
 
+function reminderRange(hoursAhead: 24 | 2): { from: Date; until: Date } {
+  const now = new Date();
+
+  if (hoursAhead === 24) {
+    return {
+      from: addHours(now, 8),
+      until: addHours(now, 36),
+    };
+  }
+
+  const center = addHours(now, 2);
+  return {
+    from: new Date(center.getTime() - SAFETY_WINDOW_MINUTES * 60_000),
+    until: new Date(center.getTime() + SAFETY_WINDOW_MINUTES * 60_000),
+  };
+}
+
 export async function processReminderWindow(hoursAhead: 24 | 2) {
   const type =
     hoursAhead === 24 ? NotificationType.REMINDER_24H : NotificationType.REMINDER_2H;
-  const center = addHours(new Date(), hoursAhead);
-  const from = new Date(center.getTime() - SAFETY_WINDOW_MINUTES * 60_000);
-  const until = new Date(center.getTime() + SAFETY_WINDOW_MINUTES * 60_000);
+  const { from, until } = reminderRange(hoursAhead);
 
   const appointments = await prisma.appointment.findMany({
     where: {

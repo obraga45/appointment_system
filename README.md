@@ -35,7 +35,7 @@ Em `.env`, `SESSION_SECRET` e `CRON_SECRET` devem ser valores longos e aleatóri
 1. **Hetzner — Postgres** (VPS separado da Evolution, backups activos). Preencha `DATABASE_URL` (PgBouncer/pooler) e `DIRECT_URL` (ligação directa para migrations).
 2. **Hetzner — Evolution API** noutro VPS. Defina `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE`. Cada negócio pode ter instância própria em Definições.
 3. **Vercel** — região `fra1`, `NEXT_PUBLIC_APP_URL` no domínio real, `SESSION_SECRET` forte.
-4. **Upstash QStash** — `QSTASH_TOKEN` + chaves de assinatura. Ao criar uma marcação, agenda T-24h e T-2h. Sem QStash, o cron horário cobre uma janela de ±45 min.
+4. **Upstash QStash** — `QSTASH_TOKEN` + chaves de assinatura. Ao criar uma marcação, agenda T-24h e T-2h. Sem QStash, o cron diário (Hobby) envia o lembrete de 24h de manhã; o de 2h precisa de QStash ou plano Pro.
 5. **Upstash Redis** — rate limit no booking público.
 6. **Resend** (opcional) — emails de reset de palavra-passe. Sem Resend, o link vai por WhatsApp se o negócio tiver telemóvel.
 7. Webhook Evolution: `POST /api/webhooks/evolution` com header `apikey`. Mensagens com «cancelar» desmarcam a próxima visita desse número.
