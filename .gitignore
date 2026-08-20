@@ -1,0 +1,25 @@
+node_modules
+.next
+out
+dist
+.vercel
+.turbo
+
+.env
+.env.*
+!.env.example
+
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+
+prisma/dev.db
+prisma/dev.db-journal
+*.db
+*.db-journal
+
+# Local secrets / certs
+*.pem
+*.p12
+credentials.json
+service-account.json

@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum NotificationType {
+  CONFIRMATION
+  REMINDER_24H
+  REMINDER_2H
+}
+
+enum NotificationStatus {
+  SENT
+  FAILED
+}
+
+model User {
+  id                 String   @id @default(uuid())
+  name               String
+  email              String   @unique
+  phone              String?
+  businessName       String
+  slug               String   @unique
+  timezone           String   @default("Europe/Lisbon")
+  passwordHash       String?
+  evolutionInstance  String?
+  createdAt          DateTime @default(now())
+
+  services           Service[]
+  appointments       Appointment[]
+  workingHours       WorkingHour[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@index([slug])
+}
+
+model WorkingHour {
+  id        String  @id @default(uuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  isClosed  Boolean @default(false)
+
+  @@unique([userId, dayOfWeek])
+  @@index([userId])
+}
+
+model Service {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  durationMinutes Int
+  price           Decimal  @db.Decimal(10, 2)
+  description     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  appointments Appointment[]
+
+  @@index([userId])
+}
+
+model Appointment {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceId         String
+  service           Service           @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  clientName        String
+  clientPhone       String
+  clientEmail       String?
+  startTime         DateTime
+  endTime           DateTime
+  status            AppointmentStatus @default(PENDING)
+  notes             String?
+  cancelToken       String            @unique
+  reminder24hJobId  String?
+  reminder2hJobId   String?
+  createdAt         DateTime          @default(now())
+
+  notifications NotificationLog[]
+
+  @@index([userId, startTime])
+  @@index([serviceId])
+  @@index([status, startTime])
+  @@index([clientPhone, startTime])
+}
+
+model NotificationLog {
+  id            String             @id @default(uuid())
+  appointmentId String
+  appointment   Appointment        @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  type          NotificationType
+  status        NotificationStatus
+  sentAt        DateTime           @default(now())
+  errorMessage  String?
+
+  @@unique([appointmentId, type])
+  @@index([appointmentId])
+  @@index([status, sentAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
