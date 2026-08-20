@@ -30,18 +30,52 @@ Página pública: http://localhost:3000/book/salao-oliveira
 
 Em `.env`, `SESSION_SECRET` e `CRON_SECRET` devem ser valores longos e aleatórios em produção.
 
-## Produção (Vercel + Hetzner)
+## Produção (já no ar)
 
-1. **Hetzner — Postgres** (VPS separado da Evolution, backups activos). Preencha `DATABASE_URL` (PgBouncer/pooler) e `DIRECT_URL` (ligação directa para migrations).
-2. **Hetzner — Evolution API** noutro VPS. Defina `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE`. Cada negócio pode ter instância própria em Definições.
-3. **Vercel** — região `fra1`, `NEXT_PUBLIC_APP_URL` no domínio real, `SESSION_SECRET` forte.
-4. **Upstash QStash** — `QSTASH_TOKEN` + chaves de assinatura. Ao criar uma marcação, agenda T-24h e T-2h. Sem QStash, o cron diário (Hobby) envia o lembrete de 24h de manhã; o de 2h precisa de QStash ou plano Pro.
-5. **Upstash Redis** — rate limit no booking público.
-6. **Resend** (opcional) — emails de reset de palavra-passe. Sem Resend, o link vai por WhatsApp se o negócio tiver telemóvel.
-7. Webhook Evolution: `POST /api/webhooks/evolution` com header `apikey`. Mensagens com «cancelar» desmarcam a próxima visita desse número.
-8. `npx prisma migrate deploy` na primeira subida.
+App: Vercel · BD: Supabase · Migrations: aplicadas.
 
-O cron em `vercel.json` corre de hora a hora e precisa de `Authorization: Bearer $CRON_SECRET`. No plano Hobby da Vercel o cron pode ser só diário — use QStash.
+### Fechar WhatsApp + lembretes (ordem)
+
+**1. Hetzner CX32** (Falkenstein/Helsinki), Ubuntu, Docker:
+
+```bash
+apt update && apt install -y docker.io docker-compose-v2
+ufw allow 22 && ufw allow 8080 && ufw --force enable
+```
+
+Copia a pasta `deploy/evolution` para o VPS, `cp .env.example .env`, preenche `SERVER_URL=http://IP:8080`, `AUTHENTICATION_API_KEY`, `EVOLUTION_DB_PASSWORD` e o `WEBHOOK_GLOBAL_URL` com o `CRON_SECRET` da Vercel. Depois:
+
+```bash
+docker compose up -d
+```
+
+Cria a instância e lê o QR no JSON:
+
+```powershell
+curl.exe -X POST "http://IP:8080/instance/create" -H "apikey: A_TUA_CHAVE" -H "Content-Type: application/json" -d "{\"instanceName\":\"marcaja\",\"qrcode\":true,\"integration\":\"WHATSAPP-BAILEYS\"}"
+```
+
+Abre WhatsApp no telemóvel → Aparelhos ligados → Ler QR (campo `base64` da resposta, ou GET `/instance/connect/marcaja`).
+
+**2. Vercel → Environment Variables** (Production), depois Redeploy:
+
+| Key | Valor |
+| --- | --- |
+| `MESSAGE_PROVIDER` | `evolution` |
+| `EVOLUTION_API_URL` | `http://IP:8080` |
+| `EVOLUTION_API_KEY` | a mesma `AUTHENTICATION_API_KEY` |
+| `EVOLUTION_INSTANCE` | `marcaja` |
+| `EVOLUTION_WEBHOOK_SECRET` | o mesmo `CRON_SECRET` |
+
+**3. Upstash** (conta grátis) → Redis REST URL + token; QStash token + duas signing keys. Cola `UPSTASH_*` e `QSTASH_*` na Vercel. Sem QStash, o Hobby só lembra 1×/dia (24h).
+
+**4. Resend** (opcional): `RESEND_API_KEY` + `EMAIL_FROM`. Sem isto, o reset de password tenta WhatsApp.
+
+**5. Teste:** nova marcação no site com o teu telemóvel. Deves receber confirmação no WhatsApp. Responder `cancelar` desmarca.
+
+Webhook: `POST /api/webhooks/evolution?secret=CRON_SECRET`. Mensagens com «cancelar» desmarcam a próxima visita desse número.
+
+O cron Hobby corre às 08:00 UTC. Plano Pro: `"0 * * * *"` em `vercel.json`.
 
 ## Modelos (Prisma)
 

@@ -3,12 +3,20 @@ import { cancelUpcomingByPhone } from "@/actions/appointments";
 import { normalizePhone } from "@/lib/utils";
 
 function isAuthorized(request: NextRequest): boolean {
-  const key = process.env.EVOLUTION_API_KEY;
-  if (!key) {
-    return false;
+  const webhookSecret = process.env.EVOLUTION_WEBHOOK_SECRET || process.env.CRON_SECRET;
+  const apiKey = process.env.EVOLUTION_API_KEY;
+  const querySecret = request.nextUrl.searchParams.get("secret");
+  const header =
+    request.headers.get("apikey") ||
+    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+
+  if (webhookSecret && querySecret === webhookSecret) {
+    return true;
   }
-  const header = request.headers.get("apikey") || request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  return header === key;
+  if (apiKey && header === apiKey) {
+    return true;
+  }
+  return false;
 }
 
 function extractText(payload: unknown): string {
