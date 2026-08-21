@@ -35,7 +35,16 @@ export default async function AppointmentsPage() {
       userId: user.id,
       startTime: { gte: weekStart, lte: weekEnd },
     },
-    include: { service: true },
+    select: {
+      id: true,
+      clientName: true,
+      clientPhone: true,
+      startTime: true,
+      endTime: true,
+      status: true,
+      notes: true,
+      service: { select: { name: true, price: true } },
+    },
     orderBy: { startTime: "asc" },
   });
 

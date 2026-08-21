@@ -77,6 +77,7 @@ async function createAppointmentRecord(input: {
 }) {
   const service = await prisma.service.findFirst({
     where: { id: input.serviceId, userId: input.userId, isActive: true },
+    select: { id: true, durationMinutes: true },
   });
 
   if (!service) {
@@ -132,10 +133,10 @@ async function createAppointmentRecord(input: {
       });
     });
 
-    await sendAppointmentConfirmation(appointment.id).catch((error) => {
+    void sendAppointmentConfirmation(appointment.id).catch((error) => {
       console.error("[appointments] Confirmação falhou:", error);
     });
-    await scheduleAppointmentReminders(appointment.id).catch((error) => {
+    void scheduleAppointmentReminders(appointment.id).catch((error) => {
       console.error("[appointments] Agendamento de lembretes falhou:", error);
     });
 
@@ -404,6 +405,7 @@ async function loadSlotContext(userId: string, serviceId: string, date: string) 
   const timeZone = owner?.timezone || DEFAULT_TIMEZONE;
   const service = await prisma.service.findFirst({
     where: { id: serviceId, userId, isActive: true },
+    select: { durationMinutes: true },
   });
   if (!service || !owner) {
     return null;
@@ -417,13 +419,14 @@ async function loadSlotContext(userId: string, serviceId: string, date: string) 
     prisma.appointment.findMany({
       where: {
         userId,
+        status: { not: AppointmentStatus.CANCELLED },
         startTime: { gte: zonedDayStart(date, timeZone), lte: zonedDayEnd(date, timeZone) },
       },
       select: { startTime: true, endTime: true, status: true },
     }),
   ]);
 
-  return { service, timeZone, workingHour, existing };
+  return { service: { durationMinutes: service.durationMinutes }, timeZone, workingHour, existing };
 }
 
 export async function getAvailableSlots(rawInput: unknown): Promise<ActionResult<string[]>> {
@@ -493,7 +496,7 @@ export async function getAvailabilityOverview(
   }
 
   try {
-    const { userId, serviceId, days = 28 } = parsed.data;
+    const { userId, serviceId, days = 14 } = parsed.data;
     const owner = await prisma.user.findUnique({
       where: { id: userId },
       select: { timezone: true },
@@ -501,6 +504,7 @@ export async function getAvailabilityOverview(
     const timeZone = owner?.timezone || DEFAULT_TIMEZONE;
     const service = await prisma.service.findFirst({
       where: { id: serviceId, userId, isActive: true },
+      select: { durationMinutes: true },
     });
 
     if (!service || !owner) {
@@ -518,6 +522,7 @@ export async function getAvailabilityOverview(
       prisma.appointment.findMany({
         where: {
           userId,
+          status: { not: AppointmentStatus.CANCELLED },
           startTime: { gte: from, lte: to },
         },
         select: { startTime: true, endTime: true, status: true },

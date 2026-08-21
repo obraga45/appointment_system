@@ -22,13 +22,20 @@ export default async function DashboardPage() {
   const to = endOfZonedDay(today, tz);
   const publicUrl = `${appUrl()}/book/${user.slug}`;
 
-  const [appointments, services, upcoming, failedReminders] = await Promise.all([
+  const [appointments, services, upcoming, failedReminder] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         userId: user.id,
         startTime: { gte: from, lte: to },
       },
-      include: { service: true },
+      select: {
+        id: true,
+        clientName: true,
+        startTime: true,
+        endTime: true,
+        status: true,
+        service: { select: { name: true, price: true } },
+      },
       orderBy: { startTime: "asc" },
     }),
     prisma.service.count({ where: { userId: user.id, isActive: true } }),
@@ -39,7 +46,7 @@ export default async function DashboardPage() {
         startTime: { gte: today },
       },
     }),
-    prisma.notificationLog.count({
+    prisma.notificationLog.findFirst({
       where: {
         status: "FAILED",
         appointment: {
@@ -48,6 +55,7 @@ export default async function DashboardPage() {
           startTime: { gte: today },
         },
       },
+      select: { id: true },
     }),
   ]);
 
@@ -70,11 +78,10 @@ export default async function DashboardPage() {
 
       <OnboardingCard hasServices={services > 0} publicUrl={publicUrl} />
 
-      {failedReminders > 0 ? (
+      {failedReminder ? (
         <Card className="border-destructive/40">
           <CardContent className="py-4 text-sm">
-            {failedReminders} lembrete{failedReminders === 1 ? "" : "s"} falharam. Verifique a Evolution API
-            em Definições.
+            Há lembretes que falharam. Verifique a Evolution API em Definições.
           </CardContent>
         </Card>
       ) : null}

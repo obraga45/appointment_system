@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { BookingWizard } from "@/components/booking-wizard";
 import { SiteFooter } from "@/components/site-footer";
 import { prisma } from "@/lib/prisma";
@@ -9,12 +10,31 @@ type PageProps = {
   params: Promise<{ businessSlug: string }>;
 };
 
+const getPublicBusiness = cache(async (businessSlug: string) => {
+  return prisma.user.findUnique({
+    where: { slug: businessSlug },
+    select: {
+      id: true,
+      slug: true,
+      businessName: true,
+      services: {
+        where: { isActive: true },
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          durationMinutes: true,
+          price: true,
+          description: true,
+        },
+      },
+    },
+  });
+});
+
 export async function generateMetadata({ params }: PageProps) {
   const { businessSlug } = await params;
-  const business = await prisma.user.findUnique({
-    where: { slug: businessSlug },
-    select: { businessName: true },
-  });
+  const business = await getPublicBusiness(businessSlug);
 
   return {
     title: business ? `Marcar em ${business.businessName}` : "Agendamento",
@@ -23,15 +43,7 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function PublicBookingPage({ params }: PageProps) {
   const { businessSlug } = await params;
-  const business = await prisma.user.findUnique({
-    where: { slug: businessSlug },
-    include: {
-      services: {
-        where: { isActive: true },
-        orderBy: { name: "asc" },
-      },
-    },
-  });
+  const business = await getPublicBusiness(businessSlug);
 
   if (!business) {
     notFound();

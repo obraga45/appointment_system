@@ -6,6 +6,7 @@ export default async function NewAppointmentPage() {
   const user = await requireUser();
   const services = await prisma.service.findMany({
     where: { userId: user.id, isActive: true },
+    select: { id: true, name: true, durationMinutes: true, price: true },
     orderBy: { name: "asc" },
   });
 

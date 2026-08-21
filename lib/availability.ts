@@ -1,5 +1,4 @@
-import { addDays, addMinutes, format, isBefore, parse } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
+import { addDays, format, parse } from "date-fns";
 import { AppointmentStatus, type Appointment, type WorkingHour } from "@prisma/client";
 import { calendarDateInZone, calendarWeekday, zonedDateTime } from "@/lib/timezone";
 
@@ -22,6 +21,83 @@ export type DayAvailability = {
   occupiedCount: number;
 };
 
+function parseMinutes(time: string): number {
+  const hours = Number(time.slice(0, 2));
+  const minutes = Number(time.slice(3, 5));
+  return hours * 60 + minutes;
+}
+
+function formatMinutes(total: number): string {
+  const hours = Math.floor(total / 60);
+  const minutes = total % 60;
+  return `${hours < 10 ? "0" : ""}${hours}:${minutes < 10 ? "0" : ""}${minutes}`;
+}
+
+function busyRanges(existing: Pick<Appointment, "startTime" | "endTime" | "status">[]) {
+  const ranges: Array<[number, number]> = [];
+  for (const appointment of existing) {
+    if (appointment.status === AppointmentStatus.CANCELLED) {
+      continue;
+    }
+    ranges.push([appointment.startTime.getTime(), appointment.endTime.getTime()]);
+  }
+  return ranges;
+}
+
+function walkDaySlots<T>(
+  input: {
+    date: string;
+    timeZone: string;
+    durationMinutes: number;
+    workingHour: WorkingHour | null;
+    existing: Pick<Appointment, "startTime" | "endTime" | "status">[];
+    now?: Date;
+  },
+  onSlot: (slot: { time: string; startMs: number; endMs: number; occupied: boolean; past: boolean }) => T | void,
+): T[] {
+  const { date, timeZone, durationMinutes, workingHour, existing, now = new Date() } = input;
+  const collected: T[] = [];
+
+  if (!workingHour || workingHour.isClosed) {
+    return collected;
+  }
+
+  const dayStart = zonedDateTime(date, workingHour.startTime, timeZone);
+  const dayEnd = zonedDateTime(date, workingHour.endTime, timeZone);
+  const dayStartMs = dayStart.getTime();
+  const dayEndMs = dayEnd.getTime();
+  if (dayStartMs >= dayEndMs) {
+    return collected;
+  }
+
+  const durationMs = durationMinutes * 60_000;
+  const stepMs = SLOT_STEP_MINUTES * 60_000;
+  const nowMs = now.getTime();
+  const busy = busyRanges(existing);
+  let cursorMs = dayStartMs;
+  let minutes = parseMinutes(workingHour.startTime);
+
+  while (cursorMs + durationMs <= dayEndMs) {
+    const endMs = cursorMs + durationMs;
+    const occupied = busy.some(([start, end]) => cursorMs < end && endMs > start);
+    const past = cursorMs < nowMs;
+    const result = onSlot({
+      time: formatMinutes(minutes),
+      startMs: cursorMs,
+      endMs,
+      occupied,
+      past,
+    });
+    if (result !== undefined) {
+      collected.push(result);
+    }
+    cursorMs += stepMs;
+    minutes += SLOT_STEP_MINUTES;
+  }
+
+  return collected;
+}
+
 export function generateDaySlots(input: {
   date: string;
   timeZone: string;
@@ -30,42 +106,10 @@ export function generateDaySlots(input: {
   existing: Pick<Appointment, "startTime" | "endTime" | "status">[];
   now?: Date;
 }): TimeSlot[] {
-  const { date, timeZone, durationMinutes, workingHour, existing, now = new Date() } = input;
-
-  if (!workingHour || workingHour.isClosed) {
-    return [];
-  }
-
-  const dayStart = zonedDateTime(date, workingHour.startTime, timeZone);
-  const dayEnd = zonedDateTime(date, workingHour.endTime, timeZone);
-
-  if (!isBefore(dayStart, dayEnd)) {
-    return [];
-  }
-
-  const busy = existing.filter(
-    (appointment) => appointment.status !== AppointmentStatus.CANCELLED,
-  );
-
-  const slots: TimeSlot[] = [];
-  let cursor = dayStart;
-
-  while (addMinutes(cursor, durationMinutes) <= dayEnd) {
-    const slotEnd = addMinutes(cursor, durationMinutes);
-    const occupied = busy.some(
-      (appointment) => cursor < appointment.endTime && slotEnd > appointment.startTime,
-    );
-    const inThePast = isBefore(cursor, now);
-
-    slots.push({
-      time: formatInTimeZone(cursor, timeZone, "HH:mm"),
-      state: occupied ? "occupied" : inThePast ? "past" : "available",
-    });
-
-    cursor = addMinutes(cursor, SLOT_STEP_MINUTES);
-  }
-
-  return slots;
+  return walkDaySlots(input, (slot) => ({
+    time: slot.time,
+    state: (slot.occupied ? "occupied" : slot.past ? "past" : "available") as SlotState,
+  }));
 }
 
 export function generateTimeSlots(input: {
@@ -76,16 +120,23 @@ export function generateTimeSlots(input: {
   existing: Pick<Appointment, "startTime" | "endTime" | "status">[];
   now?: Date;
 }): string[] {
-  return generateDaySlots(input)
-    .filter((slot) => slot.state === "available")
-    .map((slot) => slot.time);
+  const times: string[] = [];
+  walkDaySlots(input, (slot) => {
+    if (!slot.occupied && !slot.past) {
+      times.push(slot.time);
+    }
+  });
+  return times;
 }
 
-export function summarizeDay(slots: TimeSlot[], closed: boolean): DayStatus {
-  if (closed || slots.length === 0) {
+function summarizeDayFromCounts(available: number, occupied: number, closed: boolean): DayStatus {
+  if (closed) {
     return "closed";
   }
-  return slots.some((slot) => slot.state === "available") ? "available" : "full";
+  if (available > 0) {
+    return "available";
+  }
+  return occupied > 0 ? "full" : "closed";
 }
 
 export function buildAvailabilityRange(input: {
@@ -100,30 +151,52 @@ export function buildAvailabilityRange(input: {
   const now = input.now ?? new Date();
   const hoursByDay = new Map(input.workingHours.map((hour) => [hour.dayOfWeek, hour]));
   const startKey = calendarDateInZone(input.from, input.timeZone);
+  const existingByDate = new Map<string, Pick<Appointment, "startTime" | "endTime" | "status">[]>();
+
+  for (const appointment of input.existing) {
+    const key = calendarDateInZone(appointment.startTime, input.timeZone);
+    const list = existingByDate.get(key);
+    if (list) {
+      list.push(appointment);
+    } else {
+      existingByDate.set(key, [appointment]);
+    }
+  }
+
+  const startNoon = parse(`${startKey} 12:00`, "yyyy-MM-dd HH:mm", new Date());
 
   return Array.from({ length: input.days }, (_, index) => {
-    const date = format(addDays(parse(`${startKey} 12:00`, "yyyy-MM-dd HH:mm", new Date()), index), "yyyy-MM-dd");
+    const date = format(addDays(startNoon, index), "yyyy-MM-dd");
     const weekday = calendarWeekday(date);
     const workingHour = hoursByDay.get(weekday) ?? null;
     const closed = !workingHour || workingHour.isClosed;
-    const dayExisting = input.existing.filter(
-      (appointment) => calendarDateInZone(appointment.startTime, input.timeZone) === date,
-    );
-    const slots = generateDaySlots({
-      date,
-      timeZone: input.timeZone,
-      durationMinutes: input.durationMinutes,
-      workingHour,
-      existing: dayExisting,
-      now,
-    });
-    const availableCount = slots.filter((slot) => slot.state === "available").length;
-    const occupiedCount = slots.filter((slot) => slot.state === "occupied").length;
+    let availableCount = 0;
+    let occupiedCount = 0;
+
+    if (!closed) {
+      walkDaySlots(
+        {
+          date,
+          timeZone: input.timeZone,
+          durationMinutes: input.durationMinutes,
+          workingHour,
+          existing: existingByDate.get(date) ?? [],
+          now,
+        },
+        (slot) => {
+          if (slot.occupied) {
+            occupiedCount += 1;
+          } else if (!slot.past) {
+            availableCount += 1;
+          }
+        },
+      );
+    }
 
     return {
       date,
       weekday,
-      status: summarizeDay(slots, closed),
+      status: summarizeDayFromCounts(availableCount, occupiedCount, closed),
       availableCount,
       occupiedCount,
     };

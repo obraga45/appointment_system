@@ -83,7 +83,7 @@ export function BookingWizard({
 
     let cancelled = false;
     setLoadingCalendar(true);
-    getAvailabilityOverview({ userId, serviceId, days: 28 })
+    getAvailabilityOverview({ userId, serviceId, days: 14 })
       .then((result) => {
         if (cancelled) return;
         if (!result.success) {

@@ -107,7 +107,7 @@ export const availabilityQuerySchema = z.object({
 export const availabilityRangeSchema = z.object({
   userId: z.string().uuid(),
   serviceId: z.string().uuid(),
-  days: z.coerce.number().int().min(7).max(42).optional(),
+  days: z.coerce.number().int().min(7).max(21).optional(),
 });
 
 export const qstashReminderSchema = z.object({
