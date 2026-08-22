@@ -95,7 +95,6 @@ export const profileSchema = z.object({
     .string()
     .min(1)
     .refine(isValidTimeZone, "Fuso horário inválido"),
-  evolutionInstance: z.string().trim().max(80).optional().or(z.literal("")),
 });
 
 export const availabilityQuerySchema = z.object({

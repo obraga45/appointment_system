@@ -30,7 +30,6 @@ export function SettingsForms({
     phone: string | null;
     timezone: string;
     slug: string;
-    evolutionInstance: string | null;
   };
   hours: HourRow[];
   publicUrl: string;
@@ -47,7 +46,6 @@ export function SettingsForms({
         businessName: String(form.get("businessName") ?? ""),
         phone: String(form.get("phone") ?? ""),
         timezone: String(form.get("timezone") ?? "Europe/Lisbon"),
-        evolutionInstance: String(form.get("evolutionInstance") ?? ""),
       });
       if (!result.success) {
         toast.error(result.error);
@@ -139,18 +137,6 @@ export function SettingsForms({
                   <option value={profile.timezone}>{profile.timezone}</option>
                 )}
               </select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="evolutionInstance">Instância WhatsApp (Evolution)</Label>
-              <Input
-                id="evolutionInstance"
-                name="evolutionInstance"
-                defaultValue={profile.evolutionInstance ?? ""}
-                placeholder="Deixe vazio para usar a instância global"
-              />
-              <p className="text-xs text-muted-foreground">
-                Opcional. Cada estabelecimento pode ter a sua instância na Evolution API.
-              </p>
             </div>
             <Button type="submit" className="w-full sm:w-auto" disabled={pending}>
               Guardar perfil

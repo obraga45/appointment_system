@@ -41,5 +41,5 @@ export function isResendConfigured(): boolean {
 }
 
 export function isEvolutionConfigured(): boolean {
-  return Boolean(readEnv("EVOLUTION_API_URL") && readEnv("EVOLUTION_API_KEY") && readEnv("EVOLUTION_INSTANCE"));
+  return Boolean(readEnv("EVOLUTION_API_URL") && readEnv("EVOLUTION_API_KEY"));
 }

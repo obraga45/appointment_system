@@ -28,7 +28,6 @@ export async function updateProfile(rawInput: unknown): Promise<ActionResult> {
         businessName: parsed.data.businessName,
         phone: parsed.data.phone || null,
         timezone: parsed.data.timezone,
-        evolutionInstance: parsed.data.evolutionInstance || null,
         slug: clash ? user.slug : nextSlug,
       },
     });

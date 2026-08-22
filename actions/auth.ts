@@ -56,6 +56,7 @@ export async function registerUser(rawInput: unknown): Promise<ActionResult<{ sl
           phone: phone || null,
           businessName,
           slug,
+          evolutionInstance: slug,
           passwordHash: hashPassword(password),
           workingHours: { create: DEFAULT_WORKING_HOURS },
         },
@@ -88,6 +89,7 @@ export async function registerUser(rawInput: unknown): Promise<ActionResult<{ sl
         phone: phone || null,
         businessName,
         slug,
+        evolutionInstance: slug,
         workingHours: { create: DEFAULT_WORKING_HOURS },
       },
     });

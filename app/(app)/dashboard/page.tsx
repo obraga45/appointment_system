@@ -4,11 +4,13 @@ import { pt } from "date-fns/locale";
 import { CalendarPlus } from "lucide-react";
 import { CopyPublicLink } from "@/components/copy-public-link";
 import { OnboardingCard } from "@/components/onboarding-card";
+import { WhatsAppConnectCard } from "@/components/whatsapp-connect-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
 import { appUrl } from "@/lib/config";
+import { evolutionInstanceName, getEvolutionConnection } from "@/lib/evolution";
 import { prisma } from "@/lib/prisma";
 import { STATUS_LABELS, STATUS_VARIANT } from "@/lib/status";
 import { calendarDateInZone, DEFAULT_TIMEZONE, endOfZonedDay, startOfZonedDay } from "@/lib/timezone";
@@ -22,7 +24,7 @@ export default async function DashboardPage() {
   const to = endOfZonedDay(today, tz);
   const publicUrl = `${appUrl()}/book/${user.slug}`;
 
-  const [appointments, services, upcoming, failedReminder] = await Promise.all([
+  const [appointments, services, upcoming, failedReminder, whatsapp] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         userId: user.id,
@@ -57,7 +59,9 @@ export default async function DashboardPage() {
       },
       select: { id: true },
     }),
+    getEvolutionConnection(evolutionInstanceName(user.evolutionInstance || user.slug)),
   ]);
+  const whatsappConnected = whatsapp.state === "open";
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
@@ -76,12 +80,25 @@ export default async function DashboardPage() {
         </Button>
       </div>
 
-      <OnboardingCard hasServices={services > 0} publicUrl={publicUrl} />
+      <OnboardingCard
+        hasServices={services > 0}
+        whatsappConnected={whatsappConnected}
+        publicUrl={publicUrl}
+      />
+
+      <WhatsAppConnectCard
+        initial={{
+          configured: whatsapp.configured,
+          connected: whatsappConnected,
+          state: whatsapp.state,
+          qr: whatsapp.qr,
+        }}
+      />
 
       {failedReminder ? (
         <Card className="border-destructive/40">
           <CardContent className="py-4 text-sm">
-            Há lembretes que falharam. Verifique a Evolution API em Definições.
+            Há confirmações ou lembretes que falharam. Volte a ligar o WhatsApp neste cartão ou em Definições.
           </CardContent>
         </Card>
       ) : null}
