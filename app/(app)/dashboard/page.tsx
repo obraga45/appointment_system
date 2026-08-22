@@ -51,6 +51,8 @@ export default async function DashboardPage() {
     prisma.notificationLog.findFirst({
       where: {
         status: "FAILED",
+        sentAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+        NOT: { errorMessage: "Fornecedor de mensagens não configurado" },
         appointment: {
           userId: user.id,
           status: { in: ["PENDING", "CONFIRMED"] },
