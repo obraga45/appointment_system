@@ -23,3 +23,6 @@ prisma/dev.db-journal
 *.p12
 credentials.json
 service-account.json
+
+deploy/evolution/whatsapp-qr.png
+deploy/evolution/.instance-*.json

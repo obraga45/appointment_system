@@ -1,3 +1,7 @@
+export function readEnv(key: string): string {
+  return (process.env[key] ?? "").trim();
+}
+
 export function isSupabaseConfigured(): boolean {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
@@ -37,9 +41,5 @@ export function isResendConfigured(): boolean {
 }
 
 export function isEvolutionConfigured(): boolean {
-  return Boolean(
-    process.env.EVOLUTION_API_URL &&
-      process.env.EVOLUTION_API_KEY &&
-      process.env.EVOLUTION_INSTANCE,
-  );
+  return Boolean(readEnv("EVOLUTION_API_URL") && readEnv("EVOLUTION_API_KEY") && readEnv("EVOLUTION_INSTANCE"));
 }

@@ -1,5 +1,6 @@
 import { formatInTimeZone } from "date-fns-tz";
 import { pt } from "date-fns/locale";
+import { readEnv } from "@/lib/config";
 import { DEFAULT_TIMEZONE } from "@/lib/timezone";
 import { formatPhoneDisplay, normalizePhone } from "@/lib/utils";
 
@@ -12,7 +13,7 @@ export type SendMessageResult = {
 };
 
 function getProvider(): MessageProvider | "none" {
-  const value = (process.env.MESSAGE_PROVIDER ?? "evolution").toLowerCase();
+  const value = (readEnv("MESSAGE_PROVIDER") || "evolution").toLowerCase();
   if (value === "evolution" || value === "zapi" || value === "twilio") {
     return value;
   }
@@ -21,16 +22,16 @@ function getProvider(): MessageProvider | "none" {
 
 function isConfigured(provider: MessageProvider | "none"): boolean {
   if (provider === "evolution") {
-    return Boolean(process.env.EVOLUTION_API_URL && process.env.EVOLUTION_API_KEY);
+    return Boolean(readEnv("EVOLUTION_API_URL") && readEnv("EVOLUTION_API_KEY"));
   }
   if (provider === "zapi") {
-    return Boolean(process.env.ZAPI_INSTANCE_ID && process.env.ZAPI_TOKEN);
+    return Boolean(readEnv("ZAPI_INSTANCE_ID") && readEnv("ZAPI_TOKEN"));
   }
   if (provider === "twilio") {
     return Boolean(
-      process.env.TWILIO_ACCOUNT_SID &&
-        process.env.TWILIO_AUTH_TOKEN &&
-        process.env.TWILIO_FROM_NUMBER,
+      readEnv("TWILIO_ACCOUNT_SID") &&
+        readEnv("TWILIO_AUTH_TOKEN") &&
+        readEnv("TWILIO_FROM_NUMBER"),
     );
   }
   return false;
@@ -53,15 +54,15 @@ async function postJson(url: string, body: unknown, headers: HeadersInit) {
 }
 
 async function sendViaEvolution(phone: string, message: string, instanceName?: string | null) {
-  const base = process.env.EVOLUTION_API_URL!.replace(/\/$/, "");
-  const instance = instanceName || process.env.EVOLUTION_INSTANCE;
+  const base = readEnv("EVOLUTION_API_URL").replace(/\/$/, "");
+  const instance = instanceName || readEnv("EVOLUTION_INSTANCE");
   if (!instance) {
     throw new Error("Instância Evolution não configurada");
   }
   await postJson(
     `${base}/message/sendText/${instance}`,
     { number: phone, text: message },
-    { apikey: process.env.EVOLUTION_API_KEY! },
+    { apikey: readEnv("EVOLUTION_API_KEY") },
   );
 }
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { addDays, addMinutes, subHours } from "date-fns";
 import { AppointmentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -133,11 +134,13 @@ async function createAppointmentRecord(input: {
       });
     });
 
-    void sendAppointmentConfirmation(appointment.id).catch((error) => {
-      console.error("[appointments] Confirmação falhou:", error);
-    });
-    void scheduleAppointmentReminders(appointment.id).catch((error) => {
-      console.error("[appointments] Agendamento de lembretes falhou:", error);
+    after(async () => {
+      await sendAppointmentConfirmation(appointment.id).catch((error) => {
+        console.error("[appointments] Confirmação falhou:", error);
+      });
+      await scheduleAppointmentReminders(appointment.id).catch((error) => {
+        console.error("[appointments] Agendamento de lembretes falhou:", error);
+      });
     });
 
     return ok({ id: appointment.id });
