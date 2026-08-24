@@ -16,6 +16,8 @@ type HourRow = {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  breakStart: string | null;
+  breakEnd: string | null;
   isClosed: boolean;
 };
 
@@ -63,6 +65,8 @@ export function SettingsForms({
       dayOfWeek,
       startTime: String(form.get(`start-${dayOfWeek}`) ?? "09:00"),
       endTime: String(form.get(`end-${dayOfWeek}`) ?? "18:00"),
+      breakStart: String(form.get(`break-start-${dayOfWeek}`) ?? ""),
+      breakEnd: String(form.get(`break-end-${dayOfWeek}`) ?? ""),
       isClosed: form.get(`closed-${dayOfWeek}`) === "on",
     }));
 
@@ -83,6 +87,8 @@ export function SettingsForms({
         dayOfWeek,
         startTime: "09:00",
         endTime: "18:00",
+        breakStart: null,
+        breakEnd: null,
         isClosed: dayOfWeek === 0,
       }
     );
@@ -151,19 +157,60 @@ export function SettingsForms({
       <Card>
         <CardHeader>
           <CardTitle>Horário de funcionamento</CardTitle>
-          <CardDescription>Os clientes só veem horários dentro destes intervalos.</CardDescription>
+          <CardDescription>
+            Os clientes só marcam dentro deste horário. Preencha a pausa (almoço ou descanso) para bloquear
+            esses intervalos; deixe em branco se não houver pausa.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onHours} className="space-y-3">
             {orderedHours.map((hour) => (
-              <div key={hour.dayOfWeek} className="grid items-center gap-2 rounded-lg border p-3 sm:grid-cols-2 md:grid-cols-[8rem_1fr_1fr_auto]">
-                <p className="text-sm font-medium sm:col-span-2 md:col-span-1">{WEEKDAY_LABELS[hour.dayOfWeek]}</p>
-                <Input type="time" name={`start-${hour.dayOfWeek}`} defaultValue={hour.startTime} />
-                <Input type="time" name={`end-${hour.dayOfWeek}`} defaultValue={hour.endTime} />
-                <label className="flex min-h-11 items-center gap-2 text-sm sm:col-span-2 md:col-span-1">
-                  <input type="checkbox" name={`closed-${hour.dayOfWeek}`} defaultChecked={hour.isClosed} />
-                  Encerrado
-                </label>
+              <div key={hour.dayOfWeek} className="space-y-3 rounded-lg border p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium">{WEEKDAY_LABELS[hour.dayOfWeek]}</p>
+                  <label className="flex min-h-11 items-center gap-2 text-sm">
+                    <input type="checkbox" name={`closed-${hour.dayOfWeek}`} defaultChecked={hour.isClosed} />
+                    Encerrado
+                  </label>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor={`start-${hour.dayOfWeek}`}>Abre</Label>
+                    <Input
+                      id={`start-${hour.dayOfWeek}`}
+                      type="time"
+                      name={`start-${hour.dayOfWeek}`}
+                      defaultValue={hour.startTime}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor={`end-${hour.dayOfWeek}`}>Fecha</Label>
+                    <Input
+                      id={`end-${hour.dayOfWeek}`}
+                      type="time"
+                      name={`end-${hour.dayOfWeek}`}
+                      defaultValue={hour.endTime}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor={`break-start-${hour.dayOfWeek}`}>Pausa (início)</Label>
+                    <Input
+                      id={`break-start-${hour.dayOfWeek}`}
+                      type="time"
+                      name={`break-start-${hour.dayOfWeek}`}
+                      defaultValue={hour.breakStart ?? ""}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor={`break-end-${hour.dayOfWeek}`}>Pausa (fim)</Label>
+                    <Input
+                      id={`break-end-${hour.dayOfWeek}`}
+                      type="time"
+                      name={`break-end-${hour.dayOfWeek}`}
+                      defaultValue={hour.breakEnd ?? ""}
+                    />
+                  </div>
+                </div>
               </div>
             ))}
             <Button type="submit" className="w-full sm:w-auto" disabled={pending}>

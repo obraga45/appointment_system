@@ -138,6 +138,7 @@ export function BookingWizard({
 
   const availableSlots = slots.filter((slot) => slot.state === "available");
   const occupiedSlots = slots.filter((slot) => slot.state === "occupied");
+  const breakSlots = slots.filter((slot) => slot.state === "break");
 
   function confirm() {
     if (!service || !time) {
@@ -346,11 +347,15 @@ export function BookingWizard({
                             available && "hover:border-primary",
                             !available && "cursor-not-allowed border-dashed bg-muted text-muted-foreground line-through",
                             slot.state === "occupied" && "bg-rose-50 text-rose-700/80",
+                            slot.state === "break" && "bg-amber-50 text-amber-800/80",
                           )}
                         >
                           <span className="block">{slot.time}</span>
                           {slot.state === "occupied" ? (
                             <span className="hidden font-normal no-underline sm:inline"> ocupado</span>
+                          ) : null}
+                          {slot.state === "break" ? (
+                            <span className="hidden font-normal no-underline sm:inline"> pausa</span>
                           ) : null}
                           {slot.state === "past" ? (
                             <span className="hidden font-normal no-underline sm:inline"> passou</span>
@@ -359,7 +364,7 @@ export function BookingWizard({
                       );
                     })}
                   </div>
-                  {occupiedSlots.length > 0 && availableSlots.length === 0 ? (
+                  {occupiedSlots.length + breakSlots.length > 0 && availableSlots.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                       Este dia está completo. Escolha no calendário uma data com horários livres.
                     </p>

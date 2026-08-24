@@ -10,6 +10,7 @@ import {
   buildAvailabilityRange,
   generateDaySlots,
   generateTimeSlots,
+  rangeOverlapsBreak,
   type DayAvailability,
   type TimeSlot,
 } from "@/lib/availability";
@@ -96,6 +97,26 @@ async function createAppointmentRecord(input: {
 
   try {
     const appointment = await withBusinessLock(input.userId, async (tx) => {
+      const weekday = calendarWeekday(input.date);
+      const workingHour = await tx.workingHour.findUnique({
+        where: { userId_dayOfWeek: { userId: input.userId, dayOfWeek: weekday } },
+        select: { isClosed: true, breakStart: true, breakEnd: true },
+      });
+      if (!workingHour || workingHour.isClosed) {
+        throw new Error("OUTSIDE_HOURS");
+      }
+      if (
+        rangeOverlapsBreak(
+          workingHour,
+          input.date,
+          input.timeZone,
+          startTime.getTime(),
+          endTime.getTime(),
+        )
+      ) {
+        throw new Error("BREAK");
+      }
+
       const free = await assertSlotIsFree(tx, {
         userId: input.userId,
         startTime,
@@ -153,6 +174,12 @@ async function createAppointmentRecord(input: {
   } catch (error) {
     if (error instanceof Error && error.message === "SLOT_TAKEN") {
       return fail("Esse horário já está ocupado");
+    }
+    if (error instanceof Error && error.message === "BREAK") {
+      return fail("Esse horário coincide com a pausa do estabelecimento");
+    }
+    if (error instanceof Error && error.message === "OUTSIDE_HOURS") {
+      return fail("O estabelecimento está encerrado nesse horário");
     }
     if (error instanceof Error && error.message === "PHONE_LIMIT") {
       return fail("Demasiadas marcações neste telemóvel. Tente mais tarde.");

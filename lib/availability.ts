@@ -4,7 +4,7 @@ import { calendarDateInZone, calendarWeekday, zonedDateTime } from "@/lib/timezo
 
 const SLOT_STEP_MINUTES = 15;
 
-export type SlotState = "available" | "occupied" | "past";
+export type SlotState = "available" | "occupied" | "break" | "past";
 
 export type TimeSlot = {
   time: string;
@@ -33,6 +33,39 @@ function formatMinutes(total: number): string {
   return `${hours < 10 ? "0" : ""}${hours}:${minutes < 10 ? "0" : ""}${minutes}`;
 }
 
+function breakRange(
+  workingHour: Pick<WorkingHour, "breakStart" | "breakEnd">,
+  date: string,
+  timeZone: string,
+): [number, number] | null {
+  if (!workingHour.breakStart || !workingHour.breakEnd) {
+    return null;
+  }
+  const start = zonedDateTime(date, workingHour.breakStart, timeZone).getTime();
+  const end = zonedDateTime(date, workingHour.breakEnd, timeZone).getTime();
+  if (start >= end) {
+    return null;
+  }
+  return [start, end];
+}
+
+export function rangeOverlapsBreak(
+  workingHour: Pick<WorkingHour, "breakStart" | "breakEnd"> | null,
+  date: string,
+  timeZone: string,
+  startMs: number,
+  endMs: number,
+): boolean {
+  if (!workingHour) {
+    return false;
+  }
+  const pause = breakRange(workingHour, date, timeZone);
+  if (!pause) {
+    return false;
+  }
+  return startMs < pause[1] && endMs > pause[0];
+}
+
 function busyRanges(existing: Pick<Appointment, "startTime" | "endTime" | "status">[]) {
   const ranges: Array<[number, number]> = [];
   for (const appointment of existing) {
@@ -53,7 +86,14 @@ function walkDaySlots<T>(
     existing: Pick<Appointment, "startTime" | "endTime" | "status">[];
     now?: Date;
   },
-  onSlot: (slot: { time: string; startMs: number; endMs: number; occupied: boolean; past: boolean }) => T | void,
+  onSlot: (slot: {
+    time: string;
+    startMs: number;
+    endMs: number;
+    occupied: boolean;
+    onBreak: boolean;
+    past: boolean;
+  }) => T | void,
 ): T[] {
   const { date, timeZone, durationMinutes, workingHour, existing, now = new Date() } = input;
   const collected: T[] = [];
@@ -74,18 +114,21 @@ function walkDaySlots<T>(
   const stepMs = SLOT_STEP_MINUTES * 60_000;
   const nowMs = now.getTime();
   const busy = busyRanges(existing);
+  const pause = breakRange(workingHour, date, timeZone);
   let cursorMs = dayStartMs;
   let minutes = parseMinutes(workingHour.startTime);
 
   while (cursorMs + durationMs <= dayEndMs) {
     const endMs = cursorMs + durationMs;
     const occupied = busy.some(([start, end]) => cursorMs < end && endMs > start);
+    const onBreak = Boolean(pause && cursorMs < pause[1] && endMs > pause[0]);
     const past = cursorMs < nowMs;
     const result = onSlot({
       time: formatMinutes(minutes),
       startMs: cursorMs,
       endMs,
       occupied,
+      onBreak,
       past,
     });
     if (result !== undefined) {
@@ -108,7 +151,13 @@ export function generateDaySlots(input: {
 }): TimeSlot[] {
   return walkDaySlots(input, (slot) => ({
     time: slot.time,
-    state: (slot.occupied ? "occupied" : slot.past ? "past" : "available") as SlotState,
+    state: (slot.onBreak
+      ? "break"
+      : slot.occupied
+        ? "occupied"
+        : slot.past
+          ? "past"
+          : "available") as SlotState,
   }));
 }
 
@@ -122,7 +171,7 @@ export function generateTimeSlots(input: {
 }): string[] {
   const times: string[] = [];
   walkDaySlots(input, (slot) => {
-    if (!slot.occupied && !slot.past) {
+    if (!slot.occupied && !slot.onBreak && !slot.past) {
       times.push(slot.time);
     }
   });
@@ -184,7 +233,7 @@ export function buildAvailabilityRange(input: {
           now,
         },
         (slot) => {
-          if (slot.occupied) {
+          if (slot.occupied || slot.onBreak) {
             occupiedCount += 1;
           } else if (!slot.past) {
             availableCount += 1;
@@ -224,13 +273,15 @@ export const DEFAULT_WORKING_HOURS: Array<{
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  breakStart: string | null;
+  breakEnd: string | null;
   isClosed: boolean;
 }> = [
-  { dayOfWeek: 0, startTime: "09:00", endTime: "13:00", isClosed: true },
-  { dayOfWeek: 1, startTime: "09:00", endTime: "18:00", isClosed: false },
-  { dayOfWeek: 2, startTime: "09:00", endTime: "18:00", isClosed: false },
-  { dayOfWeek: 3, startTime: "09:00", endTime: "18:00", isClosed: false },
-  { dayOfWeek: 4, startTime: "09:00", endTime: "18:00", isClosed: false },
-  { dayOfWeek: 5, startTime: "09:00", endTime: "18:00", isClosed: false },
-  { dayOfWeek: 6, startTime: "09:00", endTime: "13:00", isClosed: false },
+  { dayOfWeek: 0, startTime: "09:00", endTime: "13:00", breakStart: null, breakEnd: null, isClosed: true },
+  { dayOfWeek: 1, startTime: "09:00", endTime: "18:00", breakStart: null, breakEnd: null, isClosed: false },
+  { dayOfWeek: 2, startTime: "09:00", endTime: "18:00", breakStart: null, breakEnd: null, isClosed: false },
+  { dayOfWeek: 3, startTime: "09:00", endTime: "18:00", breakStart: null, breakEnd: null, isClosed: false },
+  { dayOfWeek: 4, startTime: "09:00", endTime: "18:00", breakStart: null, breakEnd: null, isClosed: false },
+  { dayOfWeek: 5, startTime: "09:00", endTime: "18:00", breakStart: null, breakEnd: null, isClosed: false },
+  { dayOfWeek: 6, startTime: "09:00", endTime: "13:00", breakStart: null, breakEnd: null, isClosed: false },
 ];

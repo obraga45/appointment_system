@@ -70,18 +70,65 @@ export const updateAppointmentStatusSchema = z.object({
   status: z.enum(["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"]),
 });
 
-export const workingHourSchema = z.object({
-  dayOfWeek: z.number().int().min(0).max(6),
-  startTime: z
-    .string()
-    .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Hora inválida (HH:mm)")
-    .transform((value) => value.slice(0, 5)),
-  endTime: z
-    .string()
-    .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Hora inválida (HH:mm)")
-    .transform((value) => value.slice(0, 5)),
-  isClosed: z.boolean(),
-});
+const timeSchema = z
+  .string()
+  .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Hora inválida (HH:mm)")
+  .transform((value) => value.slice(0, 5));
+
+const optionalTimeSchema = z
+  .string()
+  .trim()
+  .transform((value) => value.slice(0, 5))
+  .refine((value) => value === "" || /^\d{2}:\d{2}$/.test(value), "Hora inválida (HH:mm)")
+  .transform((value) => (value === "" ? null : value));
+
+function timeToMinutes(time: string): number {
+  return Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+}
+
+export const workingHourSchema = z
+  .object({
+    dayOfWeek: z.number().int().min(0).max(6),
+    startTime: timeSchema,
+    endTime: timeSchema,
+    breakStart: optionalTimeSchema.optional().nullable(),
+    breakEnd: optionalTimeSchema.optional().nullable(),
+    isClosed: z.boolean(),
+  })
+  .superRefine((hour, ctx) => {
+    if (hour.isClosed) {
+      return;
+    }
+    const breakStart = hour.breakStart ?? null;
+    const breakEnd = hour.breakEnd ?? null;
+    if (!breakStart && !breakEnd) {
+      return;
+    }
+    if (!breakStart || !breakEnd) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Indique o início e o fim da pausa",
+      });
+      return;
+    }
+    const open = timeToMinutes(hour.startTime);
+    const close = timeToMinutes(hour.endTime);
+    const pauseFrom = timeToMinutes(breakStart);
+    const pauseUntil = timeToMinutes(breakEnd);
+    if (pauseFrom >= pauseUntil) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A pausa tem de terminar depois de começar",
+      });
+      return;
+    }
+    if (pauseFrom < open || pauseUntil > close) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A pausa tem de ficar dentro do horário de funcionamento",
+      });
+    }
+  });
 
 export const workingHoursSchema = z.object({
   hours: z.array(workingHourSchema).length(7, "Devem existir 7 dias"),

@@ -56,6 +56,8 @@ export async function updateWorkingHours(rawInput: unknown): Promise<ActionResul
           update: {
             startTime: hour.startTime,
             endTime: hour.endTime,
+            breakStart: hour.breakStart ?? null,
+            breakEnd: hour.breakEnd ?? null,
             isClosed: hour.isClosed,
           },
         }),
