@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import { Outfit, Source_Serif_4 } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { NavigationProgress } from "@/components/navigation-progress";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="pt" className={`${outfit.variable} ${sourceSerif.variable}`}>
       <body className="min-h-dvh overflow-x-hidden font-sans antialiased">
         {children}
+        <NavigationProgress />
         <Toaster />
       </body>
     </html>

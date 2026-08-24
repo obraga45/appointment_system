@@ -36,7 +36,10 @@ export function WhatsAppConnectCard({ initial }: { initial?: WhatsAppStatus }) {
       if (!result.success) {
         return;
       }
-      setStatus(result.data);
+      setStatus((current) => ({
+        ...result.data,
+        qr: result.data.qr ?? current.qr,
+      }));
       if (result.data.connected) {
         toast.success("WhatsApp ligado");
       }

@@ -25,26 +25,35 @@ function apiKey() {
   return readEnv("EVOLUTION_API_KEY");
 }
 
-async function evoFetch(path: string, init?: RequestInit): Promise<{ ok: boolean; status: number; json: unknown }> {
-  const response = await fetch(`${baseUrl()}${path}`, {
-    ...init,
-    headers: {
-      apikey: apiKey(),
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-    cache: "no-store",
-  });
-
-  const text = await response.text();
-  let json: unknown = null;
+async function evoFetch(
+  path: string,
+  init?: RequestInit,
+  timeoutMs = 3500,
+): Promise<{ ok: boolean; status: number; json: unknown }> {
   try {
-    json = text ? JSON.parse(text) : null;
-  } catch {
-    json = { raw: text.slice(0, 400) };
-  }
+    const response = await fetch(`${baseUrl()}${path}`, {
+      ...init,
+      signal: init?.signal ?? AbortSignal.timeout(timeoutMs),
+      headers: {
+        apikey: apiKey(),
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+      cache: "no-store",
+    });
 
-  return { ok: response.ok, status: response.status, json };
+    const text = await response.text();
+    let json: unknown = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      json = { raw: text.slice(0, 400) };
+    }
+
+    return { ok: response.ok, status: response.status, json };
+  } catch {
+    return { ok: false, status: 0, json: { error: "timeout" } };
+  }
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -101,7 +110,7 @@ export async function fetchEvolutionQr(instance: string): Promise<string | null>
     return null;
   }
 
-  const result = await evoFetch(`/instance/connect/${instance}`);
+  const result = await evoFetch(`/instance/connect/${instance}`, undefined, 12_000);
   return extractQrBase64(result.json);
 }
 
@@ -110,14 +119,18 @@ export async function ensureEvolutionInstance(instance: string): Promise<string 
     throw new Error("WhatsApp ainda não está disponível");
   }
 
-  const created = await evoFetch("/instance/create", {
-    method: "POST",
-    body: JSON.stringify({
-      instanceName: instance,
-      qrcode: true,
-      integration: "WHATSAPP-BAILEYS",
-    }),
-  });
+  const created = await evoFetch(
+    "/instance/create",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        instanceName: instance,
+        qrcode: true,
+        integration: "WHATSAPP-BAILEYS",
+      }),
+    },
+    12_000,
+  );
 
   if (created.ok) {
     return extractQrBase64(created.json);
@@ -137,13 +150,17 @@ export async function logoutEvolutionInstance(instance: string): Promise<void> {
   }
 }
 
-export async function getEvolutionConnection(instance: string): Promise<EvolutionConnection> {
+export async function getEvolutionConnection(
+  instance: string,
+  options?: { includeQr?: boolean },
+): Promise<EvolutionConnection> {
   if (!isEvolutionApiReady()) {
     return { configured: false, state: "unknown", qr: null };
   }
 
   const state = await getEvolutionState(instance);
-  const qr = state === "open" ? null : await fetchEvolutionQr(instance);
+  const qr =
+    options?.includeQr && state !== "open" ? await fetchEvolutionQr(instance) : null;
 
   return {
     configured: true,

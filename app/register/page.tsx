@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { registerUser } from "@/actions/auth";
+import { startPageProgress } from "@/components/navigation-progress";
 import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,14 +29,14 @@ export default function RegisterPage() {
       phone: String(form.get("phone") ?? ""),
       acceptTerms: form.get("acceptTerms") === "on",
     });
-    setPending(false);
-
     if (!result.success) {
+      setPending(false);
       toast.error(result.error);
       return;
     }
 
     toast.success("Conta criada. Bem-vindo.");
+    startPageProgress();
     router.push("/dashboard");
     router.refresh();
   }

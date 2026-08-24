@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { toast } from "sonner";
 import { loginUser } from "@/actions/auth";
+import { startPageProgress } from "@/components/navigation-progress";
 import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,13 +25,13 @@ export default function LoginPage() {
       email: String(form.get("email") ?? ""),
       password: String(form.get("password") ?? ""),
     });
-    setPending(false);
-
     if (!result.success) {
+      setPending(false);
       toast.error(result.error);
       return;
     }
 
+    startPageProgress();
     router.push("/dashboard");
     router.refresh();
   }

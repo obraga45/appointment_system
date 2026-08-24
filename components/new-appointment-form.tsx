@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition, type FormEvent } from "rea
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createAppointment, getAvailableSlots } from "@/actions/appointments";
+import { startPageProgress } from "@/components/navigation-progress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -91,6 +92,7 @@ export function NewAppointmentForm({
       }
 
       toast.success("Marcação criada e confirmação enviada");
+      startPageProgress();
       router.push("/appointments");
       router.refresh();
     });

@@ -102,3 +102,26 @@
     touch-action: manipulation;
   }
 }
+
+.nav-progress {
+  height: 100%;
+  width: 72%;
+  background: var(--primary);
+  transform-origin: left;
+  animation: nav-progress-load 1.1s ease-out forwards;
+}
+
+.nav-progress-done {
+  width: 100%;
+  animation: none;
+  transition: width 180ms ease-out;
+}
+
+@keyframes nav-progress-load {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 72%;
+  }
+}

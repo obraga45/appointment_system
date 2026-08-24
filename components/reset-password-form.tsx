@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { resetPassword } from "@/actions/auth";
+import { startPageProgress } from "@/components/navigation-progress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,14 +29,14 @@ export function ResetPasswordForm() {
 
     setPending(true);
     const result = await resetPassword({ token: token || "supabase-session", password });
-    setPending(false);
-
     if (!result.success) {
+      setPending(false);
       toast.error(result.error);
       return;
     }
 
     toast.success("Palavra-passe actualizada");
+    startPageProgress();
     router.push("/dashboard");
     router.refresh();
   }

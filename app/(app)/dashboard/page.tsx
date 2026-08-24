@@ -1,19 +1,19 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { formatInTimeZone } from "date-fns-tz";
 import { pt } from "date-fns/locale";
 import { CalendarPlus } from "lucide-react";
 import { CopyPublicLink } from "@/components/copy-public-link";
-import { OnboardingCard } from "@/components/onboarding-card";
-import { WhatsAppConnectCard } from "@/components/whatsapp-connect-card";
+import { CardLoading } from "@/components/page-loading";
+import { WhatsAppStatusBlock } from "@/components/whatsapp-status-block";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
 import { publicBookingUrl } from "@/lib/config";
-import { evolutionInstanceName, getEvolutionConnection } from "@/lib/evolution";
 import { prisma } from "@/lib/prisma";
 import { STATUS_LABELS, STATUS_VARIANT } from "@/lib/status";
-import { calendarDateInZone, DEFAULT_TIMEZONE, endOfZonedDay, startOfZonedDay } from "@/lib/timezone";
+import { DEFAULT_TIMEZONE, endOfZonedDay, startOfZonedDay } from "@/lib/timezone";
 import { formatCurrency } from "@/lib/utils";
 
 export default async function DashboardPage() {
@@ -24,7 +24,7 @@ export default async function DashboardPage() {
   const to = endOfZonedDay(today, tz);
   const publicUrl = publicBookingUrl(user.slug);
 
-  const [appointments, services, upcoming, failedReminder, whatsapp] = await Promise.all([
+  const [appointments, services, upcoming, failedReminder] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         userId: user.id,
@@ -61,9 +61,7 @@ export default async function DashboardPage() {
       },
       select: { id: true },
     }),
-    getEvolutionConnection(evolutionInstanceName(user.evolutionInstance || user.slug)),
   ]);
-  const whatsappConnected = whatsapp.state === "open";
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
@@ -82,20 +80,15 @@ export default async function DashboardPage() {
         </Button>
       </div>
 
-      <OnboardingCard
-        hasServices={services > 0}
-        whatsappConnected={whatsappConnected}
-        publicUrl={publicUrl}
-      />
-
-      <WhatsAppConnectCard
-        initial={{
-          configured: whatsapp.configured,
-          connected: whatsappConnected,
-          state: whatsapp.state,
-          qr: whatsapp.qr,
-        }}
-      />
+      <Suspense fallback={<CardLoading />}>
+        <WhatsAppStatusBlock
+          slug={user.slug}
+          instance={user.evolutionInstance}
+          hasServices={services > 0}
+          publicUrl={publicUrl}
+          showOnboarding
+        />
+      </Suspense>
 
       {failedReminder ? (
         <Card className="border-destructive/40">

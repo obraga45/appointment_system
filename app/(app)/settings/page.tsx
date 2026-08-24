@@ -1,8 +1,9 @@
+import { Suspense } from "react";
+import { CardLoading } from "@/components/page-loading";
 import { SettingsForms } from "@/components/settings-forms";
-import { WhatsAppConnectCard } from "@/components/whatsapp-connect-card";
+import { WhatsAppStatusBlock } from "@/components/whatsapp-status-block";
 import { requireUser } from "@/lib/auth";
 import { publicBookingUrl } from "@/lib/config";
-import { evolutionInstanceName, getEvolutionConnection } from "@/lib/evolution";
 import { prisma } from "@/lib/prisma";
 
 export default async function SettingsPage() {
@@ -11,7 +12,6 @@ export default async function SettingsPage() {
     where: { userId: user.id },
     orderBy: { dayOfWeek: "asc" },
   });
-  const whatsapp = await getEvolutionConnection(evolutionInstanceName(user.evolutionInstance || user.slug));
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -19,14 +19,9 @@ export default async function SettingsPage() {
         <h1 className="font-serif text-2xl font-semibold sm:text-3xl">Definições</h1>
         <p className="text-sm text-muted-foreground">Perfil, WhatsApp, link público e horário de funcionamento.</p>
       </div>
-      <WhatsAppConnectCard
-        initial={{
-          configured: whatsapp.configured,
-          connected: whatsapp.state === "open",
-          state: whatsapp.state,
-          qr: whatsapp.qr,
-        }}
-      />
+      <Suspense fallback={<CardLoading />}>
+        <WhatsAppStatusBlock slug={user.slug} instance={user.evolutionInstance} />
+      </Suspense>
       <SettingsForms
         publicUrl={publicBookingUrl(user.slug)}
         profile={{
