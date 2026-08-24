@@ -4,7 +4,7 @@ import { calendarDateInZone, calendarWeekday, zonedDateTime } from "@/lib/timezo
 
 const SLOT_STEP_MINUTES = 15;
 
-export type SlotState = "available" | "occupied" | "break" | "past";
+export type SlotState = "available" | "occupied" | "break" | "blocked" | "past";
 
 export type TimeSlot = {
   time: string;
@@ -31,6 +31,46 @@ function formatMinutes(total: number): string {
   const hours = Math.floor(total / 60);
   const minutes = total % 60;
   return `${hours < 10 ? "0" : ""}${hours}:${minutes < 10 ? "0" : ""}${minutes}`;
+}
+
+export type ScheduleBlock = {
+  date: string;
+  startTime: string | null;
+  endTime: string | null;
+};
+
+export function isDateFullyBlocked(blocks: ScheduleBlock[], date: string): boolean {
+  return blocks.some((block) => block.date === date && !block.startTime && !block.endTime);
+}
+
+function exceptionRanges(blocks: ScheduleBlock[], date: string, timeZone: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = [];
+  for (const block of blocks) {
+    if (block.date !== date || !block.startTime || !block.endTime) {
+      continue;
+    }
+    const start = zonedDateTime(date, block.startTime, timeZone).getTime();
+    const end = zonedDateTime(date, block.endTime, timeZone).getTime();
+    if (start < end) {
+      ranges.push([start, end]);
+    }
+  }
+  return ranges;
+}
+
+export function rangeOverlapsException(
+  blocks: ScheduleBlock[],
+  date: string,
+  timeZone: string,
+  startMs: number,
+  endMs: number,
+): boolean {
+  if (isDateFullyBlocked(blocks, date)) {
+    return true;
+  }
+  return exceptionRanges(blocks, date, timeZone).some(
+    ([start, end]) => startMs < end && endMs > start,
+  );
 }
 
 function breakRange(
@@ -84,6 +124,7 @@ function walkDaySlots<T>(
     durationMinutes: number;
     workingHour: WorkingHour | null;
     existing: Pick<Appointment, "startTime" | "endTime" | "status">[];
+    exceptions?: ScheduleBlock[];
     now?: Date;
   },
   onSlot: (slot: {
@@ -92,13 +133,14 @@ function walkDaySlots<T>(
     endMs: number;
     occupied: boolean;
     onBreak: boolean;
+    blocked: boolean;
     past: boolean;
   }) => T | void,
 ): T[] {
-  const { date, timeZone, durationMinutes, workingHour, existing, now = new Date() } = input;
+  const { date, timeZone, durationMinutes, workingHour, existing, exceptions = [], now = new Date() } = input;
   const collected: T[] = [];
 
-  if (!workingHour || workingHour.isClosed) {
+  if (!workingHour || workingHour.isClosed || isDateFullyBlocked(exceptions, date)) {
     return collected;
   }
 
@@ -115,6 +157,7 @@ function walkDaySlots<T>(
   const nowMs = now.getTime();
   const busy = busyRanges(existing);
   const pause = breakRange(workingHour, date, timeZone);
+  const blockedRanges = exceptionRanges(exceptions, date, timeZone);
   let cursorMs = dayStartMs;
   let minutes = parseMinutes(workingHour.startTime);
 
@@ -122,6 +165,7 @@ function walkDaySlots<T>(
     const endMs = cursorMs + durationMs;
     const occupied = busy.some(([start, end]) => cursorMs < end && endMs > start);
     const onBreak = Boolean(pause && cursorMs < pause[1] && endMs > pause[0]);
+    const blocked = blockedRanges.some(([start, end]) => cursorMs < end && endMs > start);
     const past = cursorMs < nowMs;
     const result = onSlot({
       time: formatMinutes(minutes),
@@ -129,6 +173,7 @@ function walkDaySlots<T>(
       endMs,
       occupied,
       onBreak,
+      blocked,
       past,
     });
     if (result !== undefined) {
@@ -147,17 +192,20 @@ export function generateDaySlots(input: {
   durationMinutes: number;
   workingHour: WorkingHour | null;
   existing: Pick<Appointment, "startTime" | "endTime" | "status">[];
+  exceptions?: ScheduleBlock[];
   now?: Date;
 }): TimeSlot[] {
   return walkDaySlots(input, (slot) => ({
     time: slot.time,
-    state: (slot.onBreak
-      ? "break"
-      : slot.occupied
-        ? "occupied"
-        : slot.past
-          ? "past"
-          : "available") as SlotState,
+    state: (slot.occupied
+      ? "occupied"
+      : slot.blocked
+        ? "blocked"
+        : slot.onBreak
+          ? "break"
+          : slot.past
+            ? "past"
+            : "available") as SlotState,
   }));
 }
 
@@ -167,11 +215,12 @@ export function generateTimeSlots(input: {
   durationMinutes: number;
   workingHour: WorkingHour | null;
   existing: Pick<Appointment, "startTime" | "endTime" | "status">[];
+  exceptions?: ScheduleBlock[];
   now?: Date;
 }): string[] {
   const times: string[] = [];
   walkDaySlots(input, (slot) => {
-    if (!slot.occupied && !slot.onBreak && !slot.past) {
+    if (!slot.occupied && !slot.onBreak && !slot.blocked && !slot.past) {
       times.push(slot.time);
     }
   });
@@ -195,12 +244,14 @@ export function buildAvailabilityRange(input: {
   timeZone: string;
   workingHours: WorkingHour[];
   existing: Pick<Appointment, "startTime" | "endTime" | "status">[];
+  exceptions?: ScheduleBlock[];
   now?: Date;
 }): DayAvailability[] {
   const now = input.now ?? new Date();
   const hoursByDay = new Map(input.workingHours.map((hour) => [hour.dayOfWeek, hour]));
   const startKey = calendarDateInZone(input.from, input.timeZone);
   const existingByDate = new Map<string, Pick<Appointment, "startTime" | "endTime" | "status">[]>();
+  const exceptions = input.exceptions ?? [];
 
   for (const appointment of input.existing) {
     const key = calendarDateInZone(appointment.startTime, input.timeZone);
@@ -218,7 +269,7 @@ export function buildAvailabilityRange(input: {
     const date = format(addDays(startNoon, index), "yyyy-MM-dd");
     const weekday = calendarWeekday(date);
     const workingHour = hoursByDay.get(weekday) ?? null;
-    const closed = !workingHour || workingHour.isClosed;
+    const closed = !workingHour || workingHour.isClosed || isDateFullyBlocked(exceptions, date);
     let availableCount = 0;
     let occupiedCount = 0;
 
@@ -230,12 +281,13 @@ export function buildAvailabilityRange(input: {
           durationMinutes: input.durationMinutes,
           workingHour,
           existing: existingByDate.get(date) ?? [],
+          exceptions,
           now,
         },
         (slot) => {
-          if (slot.occupied || slot.onBreak) {
+          if (slot.occupied) {
             occupiedCount += 1;
-          } else if (!slot.past) {
+          } else if (!slot.past && !slot.onBreak && !slot.blocked) {
             availableCount += 1;
           }
         },

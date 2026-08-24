@@ -148,7 +148,10 @@ export function NewAppointmentForm({
             {loadingSlots ? (
               <p className="text-sm text-muted-foreground">A carregar horários…</p>
             ) : slots.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sem horários livres neste dia.</p>
+              <p className="text-sm text-muted-foreground">
+                Sem horários livres neste dia. Se fechou o dia ou um intervalo em Encerramentos
+                pontuais, reabra-o nas definições para voltar a marcar.
+              </p>
             ) : (
               <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
                 {slots.map((slot) => (

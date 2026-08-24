@@ -42,6 +42,7 @@ model User {
   services           Service[]
   appointments       Appointment[]
   workingHours       WorkingHour[]
+  scheduleExceptions ScheduleException[]
   passwordResetTokens PasswordResetToken[]
 
   @@index([slug])
@@ -60,6 +61,19 @@ model WorkingHour {
 
   @@unique([userId, dayOfWeek])
   @@index([userId])
+}
+
+model ScheduleException {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String
+  startTime String?
+  endTime   String?
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
 }
 
 model Service {

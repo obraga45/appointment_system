@@ -158,7 +158,8 @@ export function SettingsForms({
         <CardHeader>
           <CardTitle>Horário de funcionamento</CardTitle>
           <CardDescription>
-            Os clientes só marcam dentro deste horário. Preencha a pausa (almoço ou descanso) para bloquear
+            Este é o horário semanal. Para fechar um dia ou um intervalo por imprevisto, use
+            Encerramentos pontuais, mais abaixo. Preencha a pausa (almoço ou descanso) para bloquear
             esses intervalos; deixe em branco se não houver pausa.
           </CardDescription>
         </CardHeader>

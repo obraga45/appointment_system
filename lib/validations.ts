@@ -134,6 +134,34 @@ export const workingHoursSchema = z.object({
   hours: z.array(workingHourSchema).length(7, "Devem existir 7 dias"),
 });
 
+export const scheduleExceptionSchema = z
+  .object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+    startTime: optionalTimeSchema.optional().nullable(),
+    endTime: optionalTimeSchema.optional().nullable(),
+    note: z.string().trim().max(120, "Nota demasiado longa").optional().or(z.literal("")),
+  })
+  .superRefine((value, ctx) => {
+    const start = value.startTime ?? null;
+    const end = value.endTime ?? null;
+    if (!start && !end) {
+      return;
+    }
+    if (!start || !end) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Indique o início e o fim do encerramento, ou deixe ambos em branco para o dia inteiro",
+      });
+      return;
+    }
+    if (timeToMinutes(start) >= timeToMinutes(end)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "O encerramento tem de terminar depois de começar",
+      });
+    }
+  });
+
 export const profileSchema = z.object({
   name: z.string().trim().min(2).max(80),
   businessName: z.string().trim().min(2).max(100),

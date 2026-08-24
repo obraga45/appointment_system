@@ -139,6 +139,7 @@ export function BookingWizard({
   const availableSlots = slots.filter((slot) => slot.state === "available");
   const occupiedSlots = slots.filter((slot) => slot.state === "occupied");
   const breakSlots = slots.filter((slot) => slot.state === "break");
+  const blockedSlots = slots.filter((slot) => slot.state === "blocked");
 
   function confirm() {
     if (!service || !time) {
@@ -348,6 +349,7 @@ export function BookingWizard({
                             !available && "cursor-not-allowed border-dashed bg-muted text-muted-foreground line-through",
                             slot.state === "occupied" && "bg-rose-50 text-rose-700/80",
                             slot.state === "break" && "bg-amber-50 text-amber-800/80",
+                            slot.state === "blocked" && "bg-muted text-muted-foreground",
                           )}
                         >
                           <span className="block">{slot.time}</span>
@@ -357,6 +359,9 @@ export function BookingWizard({
                           {slot.state === "break" ? (
                             <span className="hidden font-normal no-underline sm:inline"> pausa</span>
                           ) : null}
+                          {slot.state === "blocked" ? (
+                            <span className="hidden font-normal no-underline sm:inline"> encerrado</span>
+                          ) : null}
                           {slot.state === "past" ? (
                             <span className="hidden font-normal no-underline sm:inline"> passou</span>
                           ) : null}
@@ -364,9 +369,12 @@ export function BookingWizard({
                       );
                     })}
                   </div>
-                  {occupiedSlots.length + breakSlots.length > 0 && availableSlots.length === 0 ? (
+                  {occupiedSlots.length + breakSlots.length + blockedSlots.length > 0 &&
+                  availableSlots.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                      Este dia está completo. Escolha no calendário uma data com horários livres.
+                      {blockedSlots.length > 0 && occupiedSlots.length === 0
+                        ? "Este dia está encerrado para novas marcações. Escolha outra data."
+                        : "Este dia está completo. Escolha no calendário uma data com horários livres."}
                     </p>
                   ) : null}
                 </>

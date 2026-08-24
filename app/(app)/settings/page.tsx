@@ -1,17 +1,28 @@
 import { Suspense } from "react";
 import { CardLoading } from "@/components/page-loading";
+import { ScheduleExceptionsForm } from "@/components/schedule-exceptions-form";
 import { SettingsForms } from "@/components/settings-forms";
 import { WhatsAppStatusBlock } from "@/components/whatsapp-status-block";
 import { requireUser } from "@/lib/auth";
 import { publicBookingUrl } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
+import { calendarDateInZone, DEFAULT_TIMEZONE } from "@/lib/timezone";
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const hours = await prisma.workingHour.findMany({
-    where: { userId: user.id },
-    orderBy: { dayOfWeek: "asc" },
-  });
+  const tz = user.timezone || DEFAULT_TIMEZONE;
+  const today = calendarDateInZone(new Date(), tz);
+  const [hours, exceptions] = await Promise.all([
+    prisma.workingHour.findMany({
+      where: { userId: user.id },
+      orderBy: { dayOfWeek: "asc" },
+    }),
+    prisma.scheduleException.findMany({
+      where: { userId: user.id, date: { gte: today } },
+      orderBy: [{ date: "asc" }, { startTime: "asc" }],
+      select: { id: true, date: true, startTime: true, endTime: true, note: true },
+    }),
+  ]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -33,6 +44,7 @@ export default async function SettingsPage() {
         }}
         hours={hours}
       />
+      <ScheduleExceptionsForm exceptions={exceptions} minDate={today} />
     </div>
   );
 }

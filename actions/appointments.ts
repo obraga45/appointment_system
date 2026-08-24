@@ -10,7 +10,9 @@ import {
   buildAvailabilityRange,
   generateDaySlots,
   generateTimeSlots,
+  isDateFullyBlocked,
   rangeOverlapsBreak,
+  rangeOverlapsException,
   type DayAvailability,
   type TimeSlot,
 } from "@/lib/availability";
@@ -117,6 +119,22 @@ async function createAppointmentRecord(input: {
         throw new Error("BREAK");
       }
 
+      const exceptions = await tx.scheduleException.findMany({
+        where: { userId: input.userId, date: input.date },
+        select: { date: true, startTime: true, endTime: true },
+      });
+      if (
+        rangeOverlapsException(
+          exceptions,
+          input.date,
+          input.timeZone,
+          startTime.getTime(),
+          endTime.getTime(),
+        )
+      ) {
+        throw new Error("BLOCKED");
+      }
+
       const free = await assertSlotIsFree(tx, {
         userId: input.userId,
         startTime,
@@ -177,6 +195,9 @@ async function createAppointmentRecord(input: {
     }
     if (error instanceof Error && error.message === "BREAK") {
       return fail("Esse horário coincide com a pausa do estabelecimento");
+    }
+    if (error instanceof Error && error.message === "BLOCKED") {
+      return fail("O estabelecimento está encerrado nesse horário");
     }
     if (error instanceof Error && error.message === "OUTSIDE_HOURS") {
       return fail("O estabelecimento está encerrado nesse horário");
@@ -448,7 +469,7 @@ async function loadSlotContext(userId: string, serviceId: string, date: string) 
   }
 
   const weekday = calendarWeekday(date);
-  const [workingHour, existing] = await Promise.all([
+  const [workingHour, existing, exceptions] = await Promise.all([
     prisma.workingHour.findUnique({
       where: { userId_dayOfWeek: { userId, dayOfWeek: weekday } },
     }),
@@ -460,9 +481,13 @@ async function loadSlotContext(userId: string, serviceId: string, date: string) 
       },
       select: { startTime: true, endTime: true, status: true },
     }),
+    prisma.scheduleException.findMany({
+      where: { userId, date },
+      select: { date: true, startTime: true, endTime: true },
+    }),
   ]);
 
-  return { service: { durationMinutes: service.durationMinutes }, timeZone, workingHour, existing };
+  return { service: { durationMinutes: service.durationMinutes }, timeZone, workingHour, existing, exceptions };
 }
 
 export async function getAvailableSlots(rawInput: unknown): Promise<ActionResult<string[]>> {
@@ -484,6 +509,7 @@ export async function getAvailableSlots(rawInput: unknown): Promise<ActionResult
         durationMinutes: ctx.service.durationMinutes,
         workingHour: ctx.workingHour,
         existing: ctx.existing,
+        exceptions: ctx.exceptions,
       }),
     );
   } catch (error) {
@@ -507,13 +533,15 @@ export async function getDaySlots(
       return fail("Serviço não encontrado");
     }
 
-    const closed = !ctx.workingHour || ctx.workingHour.isClosed;
+    const closed =
+      !ctx.workingHour || ctx.workingHour.isClosed || isDateFullyBlocked(ctx.exceptions, date);
     const slots = generateDaySlots({
       date,
       timeZone: ctx.timeZone,
       durationMinutes: ctx.service.durationMinutes,
       workingHour: ctx.workingHour,
       existing: ctx.existing,
+      exceptions: ctx.exceptions,
     });
 
     return ok({ date, closed, slots });
@@ -553,7 +581,10 @@ export async function getAvailabilityOverview(
       timeZone,
     );
 
-    const [workingHours, existing] = await Promise.all([
+    const fromKey = calendarDateInZone(from, timeZone);
+    const toKey = calendarDateInZone(to, timeZone);
+
+    const [workingHours, existing, exceptions] = await Promise.all([
       prisma.workingHour.findMany({ where: { userId } }),
       prisma.appointment.findMany({
         where: {
@@ -562,6 +593,10 @@ export async function getAvailabilityOverview(
           startTime: { gte: from, lte: to },
         },
         select: { startTime: true, endTime: true, status: true },
+      }),
+      prisma.scheduleException.findMany({
+        where: { userId, date: { gte: fromKey, lte: toKey } },
+        select: { date: true, startTime: true, endTime: true },
       }),
     ]);
 
@@ -573,6 +608,7 @@ export async function getAvailabilityOverview(
         timeZone,
         workingHours,
         existing,
+        exceptions,
       }),
     });
   } catch (error) {
