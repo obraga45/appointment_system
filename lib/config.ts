@@ -1,3 +1,5 @@
+import { BRAND } from "@/lib/brand";
+
 export function readEnv(key: string): string {
   return (process.env[key] ?? "").trim();
 }
@@ -17,8 +19,34 @@ export function isProduction(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
+function canonicalSiteUrl() {
+  return `https://${BRAND.domain}`;
+}
+
+function isLocalUrl(url: string) {
+  return /localhost|127\.0\.0\.1/i.test(url);
+}
+
+function isEphemeralHost(url: string) {
+  return /\.vercel\.app($|[:/])/i.test(url);
+}
+
 export function appUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const fromEnv = (process.env.NEXT_PUBLIC_APP_URL ?? "").trim().replace(/\/$/, "");
+
+  if (fromEnv && isLocalUrl(fromEnv)) {
+    return fromEnv;
+  }
+
+  if (!isProduction()) {
+    return fromEnv && !isEphemeralHost(fromEnv) ? fromEnv : "http://localhost:3000";
+  }
+
+  if (fromEnv && !isEphemeralHost(fromEnv) && /^https:\/\//i.test(fromEnv)) {
+    return fromEnv;
+  }
+
+  return canonicalSiteUrl();
 }
 
 export function publicBookingUrl(slug: string) {
