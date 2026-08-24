@@ -1,7 +1,7 @@
 import { SettingsForms } from "@/components/settings-forms";
 import { WhatsAppConnectCard } from "@/components/whatsapp-connect-card";
 import { requireUser } from "@/lib/auth";
-import { appUrl } from "@/lib/config";
+import { publicBookingUrl } from "@/lib/config";
 import { evolutionInstanceName, getEvolutionConnection } from "@/lib/evolution";
 import { prisma } from "@/lib/prisma";
 
@@ -28,7 +28,7 @@ export default async function SettingsPage() {
         }}
       />
       <SettingsForms
-        publicUrl={`${appUrl()}/book/${user.slug}`}
+        publicUrl={publicBookingUrl(user.slug)}
         profile={{
           name: user.name,
           businessName: user.businessName,

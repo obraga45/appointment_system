@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
-import { appUrl } from "@/lib/config";
+import { publicBookingUrl } from "@/lib/config";
 import { evolutionInstanceName, getEvolutionConnection } from "@/lib/evolution";
 import { prisma } from "@/lib/prisma";
 import { STATUS_LABELS, STATUS_VARIANT } from "@/lib/status";
@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   const today = new Date();
   const from = startOfZonedDay(today, tz);
   const to = endOfZonedDay(today, tz);
-  const publicUrl = `${appUrl()}/book/${user.slug}`;
+  const publicUrl = publicBookingUrl(user.slug);
 
   const [appointments, services, upcoming, failedReminder, whatsapp] = await Promise.all([
     prisma.appointment.findMany({
@@ -155,7 +155,7 @@ export default async function DashboardPage() {
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
               Sem marcações para hoje. Partilhe o link{" "}
-              <span className="font-medium text-foreground">/book/{user.slug}</span> com os clientes.
+              <span className="font-medium text-foreground">/agendar/{user.slug}</span> com os clientes.
             </CardContent>
           </Card>
         ) : (

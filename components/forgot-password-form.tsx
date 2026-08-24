@@ -34,7 +34,7 @@ export function ForgotPasswordForm() {
     <Card className="w-full max-w-md">
       <CardHeader>
         <Link href="/" className="font-serif text-2xl font-semibold">
-          MarcaJá
+          TemVagas
         </Link>
         <CardTitle className="mt-4">Recuperar palavra-passe</CardTitle>
         <CardDescription>

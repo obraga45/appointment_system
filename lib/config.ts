@@ -21,6 +21,14 @@ export function appUrl(): string {
   return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
 
+export function publicBookingUrl(slug: string) {
+  return `${appUrl()}/agendar/${slug}`;
+}
+
+export function publicCancelUrl(token: string) {
+  return `${appUrl()}/agendar/cancel/${token}`;
+}
+
 export function isQstashConfigured(): boolean {
   return Boolean(process.env.QSTASH_TOKEN);
 }

@@ -7,7 +7,7 @@ import {
 } from "@prisma/client";
 import { Client } from "@upstash/qstash";
 import { prisma } from "@/lib/prisma";
-import { appUrl, isQstashConfigured } from "@/lib/config";
+import { isQstashConfigured, publicCancelUrl } from "@/lib/config";
 import {
   buildCancelConfirmationMessage,
   buildConfirmationMessage,
@@ -25,7 +25,7 @@ export function hashToken(token: string) {
 }
 
 export function cancelUrl(token: string) {
-  return `${appUrl()}/book/cancel/${token}`;
+  return publicCancelUrl(token);
 }
 
 function qstash() {

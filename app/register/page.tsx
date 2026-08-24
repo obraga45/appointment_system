@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { BRAND } from "@/lib/brand";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -45,10 +46,13 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <Link href="/" className="font-serif text-2xl font-semibold">
-            MarcaJá
+            TemVagas
           </Link>
           <CardTitle className="mt-4">Criar conta</CardTitle>
-          <CardDescription>Configure o negócio em menos de um minuto.</CardDescription>
+          <CardDescription>
+            Configura o negócio em menos de um minuto. Podes testar o link; o 1.º ano ({BRAND.yearlyPrice})
+            paga-se depois para {BRAND.email}.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="grid gap-4">

@@ -1,4 +1,5 @@
 import { appUrl, isResendConfigured } from "@/lib/config";
+import { BRAND } from "@/lib/brand";
 import { sendWhatsAppMessage } from "@/lib/notifications";
 
 export async function sendPasswordResetLink(input: {
@@ -7,10 +8,10 @@ export async function sendPasswordResetLink(input: {
   phone?: string | null;
   url: string;
 }): Promise<void> {
-  const subject = "Redefinir palavra-passe — MarcaJá";
+  const subject = `Redefinir palavra-passe — ${BRAND.name}`;
   const text = [
     `Olá ${input.name},`,
-    "Recebemos um pedido para redefinir a palavra-passe da sua conta MarcaJá.",
+    `Recebemos um pedido para redefinir a palavra-passe da sua conta ${BRAND.name}.`,
     `Abra este link (válido 1 hora): ${input.url}`,
     "Se não foi você, ignore esta mensagem.",
   ].join("\n");
@@ -23,7 +24,7 @@ export async function sendPasswordResetLink(input: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: process.env.EMAIL_FROM || "MarcaJá <noreply@marcaja.pt>",
+        from: process.env.EMAIL_FROM || `${BRAND.name} <${BRAND.email}>`,
         to: [input.email],
         subject,
         text,
@@ -39,7 +40,7 @@ export async function sendPasswordResetLink(input: {
   if (input.phone) {
     const result = await sendWhatsAppMessage(
       input.phone,
-      `MarcaJá: para redefinir a palavra-passe, abra ${input.url}`,
+      `${BRAND.name}: para redefinir a palavra-passe, abra ${input.url}`,
     );
     if (result.ok) {
       return;

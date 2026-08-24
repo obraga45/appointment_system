@@ -5,6 +5,7 @@ import { getPublicAppointmentByToken } from "@/actions/appointments";
 import { CancelBookingForm } from "@/components/cancel-booking-form";
 import { SiteFooter } from "@/components/site-footer";
 import { Card, CardContent } from "@/components/ui/card";
+import { BRAND } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export default async function CancelBookingPage({ params }: PageProps) {
   return (
     <div className="flex min-h-dvh flex-col bg-[radial-gradient(circle_at_top,oklch(0.93_0.04_85),transparent_45%)]">
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-10">
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">MarcaJá</p>
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">{BRAND.name}</p>
         <h1 className="mt-2 font-serif text-3xl font-semibold">Cancelar marcação</h1>
         {!appointment ? (
           <Card className="mt-6">

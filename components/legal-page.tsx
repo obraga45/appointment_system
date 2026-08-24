@@ -1,13 +1,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { SiteFooter } from "@/components/site-footer";
+import { BRAND } from "@/lib/brand";
 
 export function LegalPage({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 py-6">
         <Link href="/" className="font-serif text-2xl font-semibold">
-          MarcaJá
+          {BRAND.name}
         </Link>
         <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground">
           Entrar

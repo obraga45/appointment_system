@@ -41,7 +41,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <Link href="/" className="font-serif text-2xl font-semibold">
-            MarcaJá
+            TemVagas
           </Link>
           <CardTitle className="mt-4">Entrar</CardTitle>
           <CardDescription>Aceda ao painel do seu negócio.</CardDescription>

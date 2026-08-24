@@ -34,7 +34,7 @@ function redisLimiter(name: string, limit: number, windowSec: number): Ratelimit
   const limiter = new Ratelimit({
     redis: Redis.fromEnv(),
     limiter: Ratelimit.slidingWindow(limit, `${windowSec} s`),
-    prefix: `marcaja:${name}`,
+    prefix: `temvagas:${name}`,
   });
   redisLimiters.set(name, limiter);
   return limiter;

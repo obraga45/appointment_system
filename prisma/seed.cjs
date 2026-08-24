@@ -24,7 +24,7 @@ const DEFAULT_HOURS = [
 ];
 
 async function main() {
-  const email = "demo@marcaja.pt";
+  const email = "demo@temvagas.pt";
 
   await prisma.notificationLog.deleteMany();
   await prisma.passwordResetToken.deleteMany();
@@ -109,8 +109,8 @@ async function main() {
     });
   }
 
-  console.log("Conta demo: demo@marcaja.pt / demo1234");
-  console.log("Página pública: /book/salao-oliveira");
+  console.log("Conta demo: demo@temvagas.pt / demo1234");
+  console.log("Página pública: /agendar/salao-oliveira");
 }
 
 main()

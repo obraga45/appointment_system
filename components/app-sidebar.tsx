@@ -6,6 +6,7 @@ import { LogOut } from "lucide-react";
 import { logoutUser } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { APP_NAV } from "@/lib/nav";
+import { BRAND, bookingPath } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 export function AppSidebar({
@@ -21,7 +22,7 @@ export function AppSidebar({
     <aside className="hidden w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
       <div className="px-5 py-6">
         <Link href="/dashboard" className="font-serif text-2xl font-semibold">
-          MarcaJá
+          {BRAND.name}
         </Link>
         <p className="mt-2 truncate text-sm text-sidebar-foreground/70">{businessName}</p>
       </div>
@@ -44,7 +45,7 @@ export function AppSidebar({
         })}
       </nav>
       <div className="space-y-2 p-4">
-        <p className="truncate px-1 text-xs text-sidebar-foreground/60">/book/{slug}</p>
+        <p className="truncate px-1 text-xs text-sidebar-foreground/60">{bookingPath(slug)}</p>
         <form action={logoutUser}>
           <Button
             type="submit"
@@ -65,7 +66,7 @@ export function MobileTopBar({ businessName }: { businessName: string }) {
     <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur md:hidden">
       <div className="min-w-0">
         <Link href="/dashboard" className="font-serif text-lg font-semibold">
-          MarcaJá
+          {BRAND.name}
         </Link>
         <p className="truncate text-xs text-muted-foreground">{businessName}</p>
       </div>
