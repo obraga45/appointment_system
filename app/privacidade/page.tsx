@@ -25,7 +25,8 @@ export default function PrivacidadePage() {
       </p>
       <p>
         <strong className="text-foreground">Comunicações:</strong> o telemóvel é usado para enviar
-        confirmação, lembretes e o link de cancelamento. O número pode ser transmitido ao fornecedor
+        confirmação, lembretes e o link de cancelamento, por WhatsApp ou SMS. O estabelecimento
+        também pode ser avisado no telemóvel da conta. O número pode ser transmitido ao fornecedor
         de mensagens escolhido. O WhatsApp usado é, em regra, o do próprio estabelecimento.
       </p>
       <p>

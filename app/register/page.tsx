@@ -67,6 +67,9 @@ export default function RegisterPage() {
             <div className="grid gap-2">
               <Label htmlFor="phone">Telemóvel</Label>
               <Input id="phone" name="phone" placeholder="+351 9xx xxx xxx" />
+              <p className="text-xs text-muted-foreground">
+                Para receber um aviso quando um cliente marca.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>

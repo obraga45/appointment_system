@@ -105,6 +105,9 @@ export function SettingsForms({
       <Card>
         <CardHeader>
           <CardTitle>Perfil do negócio</CardTitle>
+          <CardDescription>
+            O telemóvel recebe um aviso quando entra uma marcação nova (WhatsApp ou SMS).
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onProfile} className="grid gap-4">
@@ -117,8 +120,8 @@ export function SettingsForms({
               <Input id="businessName" name="businessName" defaultValue={profile.businessName} required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="phone">Telemóvel</Label>
-              <Input id="phone" name="phone" defaultValue={profile.phone ?? ""} />
+              <Label htmlFor="phone">Telemóvel para avisos</Label>
+              <Input id="phone" name="phone" defaultValue={profile.phone ?? ""} placeholder="+351 9xx xxx xxx" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="timezone">Fuso horário</Label>

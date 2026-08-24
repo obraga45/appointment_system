@@ -1,6 +1,6 @@
 import { appUrl, isResendConfigured } from "@/lib/config";
 import { BRAND } from "@/lib/brand";
-import { sendWhatsAppMessage } from "@/lib/notifications";
+import { sendOutboundMessage } from "@/lib/notifications";
 
 export async function sendPasswordResetLink(input: {
   email: string;
@@ -38,7 +38,7 @@ export async function sendPasswordResetLink(input: {
   }
 
   if (input.phone) {
-    const result = await sendWhatsAppMessage(
+    const result = await sendOutboundMessage(
       input.phone,
       `${BRAND.name}: para redefinir a palavra-passe, abra ${input.url}`,
     );

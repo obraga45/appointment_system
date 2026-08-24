@@ -19,6 +19,7 @@ import {
   cancelScheduledReminders,
   newCancelToken,
   notifyAppointmentCancelled,
+  notifyBusinessOfBooking,
   scheduleAppointmentReminders,
   sendAppointmentConfirmation,
 } from "@/lib/reminders";
@@ -135,9 +136,14 @@ async function createAppointmentRecord(input: {
     });
 
     after(async () => {
-      await sendAppointmentConfirmation(appointment.id).catch((error) => {
-        console.error("[appointments] Confirmação falhou:", error);
-      });
+      await Promise.all([
+        sendAppointmentConfirmation(appointment.id).catch((error) => {
+          console.error("[appointments] Confirmação falhou:", error);
+        }),
+        notifyBusinessOfBooking(appointment.id).catch((error) => {
+          console.error("[appointments] Aviso ao negócio falhou:", error);
+        }),
+      ]);
       await scheduleAppointmentReminders(appointment.id).catch((error) => {
         console.error("[appointments] Agendamento de lembretes falhou:", error);
       });

@@ -9,12 +9,16 @@ import { Client } from "@upstash/qstash";
 import { prisma } from "@/lib/prisma";
 import { appUrl, isQstashConfigured, publicCancelUrl } from "@/lib/config";
 import {
+  buildBusinessAlertMessage,
+  buildBusinessCancelMessage,
   buildCancelConfirmationMessage,
   buildConfirmationMessage,
   buildReminderMessage,
-  sendWhatsAppMessage,
+  sendBusinessAlert,
+  sendOutboundMessage,
 } from "@/lib/notifications";
 import { DEFAULT_TIMEZONE } from "@/lib/timezone";
+import { normalizePhone } from "@/lib/utils";
 
 export function newCancelToken() {
   return randomBytes(24).toString("hex");
@@ -87,13 +91,53 @@ export async function sendAppointmentConfirmation(appointmentId: string) {
     cancelUrl: cancelUrl(appointment.cancelToken),
   });
 
-  const result = await sendWhatsAppMessage(
+  const result = await sendOutboundMessage(
     appointment.clientPhone,
     message,
     appointment.user.evolutionInstance,
   );
   await logNotification(appointmentId, NotificationType.CONFIRMATION, result);
   return { skipped: false as const, ok: result.ok, error: result.error };
+}
+
+export async function notifyBusinessOfBooking(appointmentId: string) {
+  if (await alreadySent(appointmentId, NotificationType.BUSINESS_ALERT)) {
+    return { skipped: true as const };
+  }
+
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    include: { user: true, service: true },
+  });
+  if (!appointment?.user.phone) {
+    return { skipped: true as const };
+  }
+
+  const salonPhone = appointment.user.phone;
+  if (samePhone(salonPhone, appointment.clientPhone)) {
+    return { skipped: true as const };
+  }
+
+  const message = buildBusinessAlertMessage({
+    businessName: appointment.user.businessName,
+    clientName: appointment.clientName,
+    clientPhone: appointment.clientPhone,
+    serviceName: appointment.service.name,
+    startTime: appointment.startTime,
+    timeZone: appointment.user.timezone || DEFAULT_TIMEZONE,
+  });
+
+  const result = await sendBusinessAlert(
+    salonPhone,
+    message,
+    appointment.user.evolutionInstance,
+  );
+  await logNotification(appointmentId, NotificationType.BUSINESS_ALERT, result);
+  return { skipped: false as const, ok: result.ok, error: result.error };
+}
+
+function samePhone(a: string, b: string) {
+  return normalizePhone(a) === normalizePhone(b);
 }
 
 export async function sendAppointmentReminder(
@@ -128,7 +172,7 @@ export async function sendAppointmentReminder(
     cancelUrl: cancelUrl(appointment.cancelToken),
   });
 
-  const result = await sendWhatsAppMessage(
+  const result = await sendOutboundMessage(
     appointment.clientPhone,
     message,
     appointment.user.evolutionInstance,
@@ -140,21 +184,29 @@ export async function sendAppointmentReminder(
 export async function notifyAppointmentCancelled(appointmentId: string) {
   const appointment = await prisma.appointment.findUnique({
     where: { id: appointmentId },
-    include: { user: true },
+    include: { user: true, service: true },
   });
   if (!appointment) {
     return;
   }
 
-  const message = buildCancelConfirmationMessage({
+  const instance = appointment.user.evolutionInstance;
+  const clientMessage = buildCancelConfirmationMessage({
     businessName: appointment.user.businessName,
     clientName: appointment.clientName,
   });
-  await sendWhatsAppMessage(
-    appointment.clientPhone,
-    message,
-    appointment.user.evolutionInstance,
-  );
+  await sendOutboundMessage(appointment.clientPhone, clientMessage, instance);
+
+  if (appointment.user.phone && !samePhone(appointment.user.phone, appointment.clientPhone)) {
+    const businessMessage = buildBusinessCancelMessage({
+      businessName: appointment.user.businessName,
+      clientName: appointment.clientName,
+      serviceName: appointment.service.name,
+      startTime: appointment.startTime,
+      timeZone: appointment.user.timezone || DEFAULT_TIMEZONE,
+    });
+    await sendBusinessAlert(appointment.user.phone, businessMessage, instance);
+  }
 }
 
 async function publishReminder(

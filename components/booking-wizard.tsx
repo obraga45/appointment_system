@@ -184,7 +184,7 @@ export function BookingWizard({
             {service.name} em {format(combineDateAndTime(date, time), "d 'de' MMMM 'às' HH:mm", { locale: pt })}.
           </p>
           <p className="text-sm text-muted-foreground">
-            Enviámos uma confirmação para o seu telemóvel, se o envio de mensagens estiver ativo.
+            Enviámos uma confirmação por WhatsApp ou SMS, se o envio de mensagens estiver ativo.
           </p>
         </CardContent>
       </Card>

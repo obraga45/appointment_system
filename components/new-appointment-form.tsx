@@ -110,7 +110,7 @@ export function NewAppointmentForm({
     <Card>
       <CardHeader>
         <CardTitle>Nova marcação</CardTitle>
-        <CardDescription>O cliente recebe confirmação por WhatsApp/SMS.</CardDescription>
+        <CardDescription>O cliente recebe confirmação por WhatsApp ou SMS. O negócio também é avisado.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="grid gap-5">

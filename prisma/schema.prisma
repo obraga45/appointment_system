@@ -19,6 +19,7 @@ enum NotificationType {
   CONFIRMATION
   REMINDER_24H
   REMINDER_2H
+  BUSINESS_ALERT
 }
 
 enum NotificationStatus {

@@ -28,7 +28,7 @@ export function OnboardingCard({
             Crie pelo menos um serviço para os clientes marcarem em {host}.
           </li>
           <li className={whatsappConnected ? "text-muted-foreground line-through" : undefined}>
-            Ligue o WhatsApp do negócio para as confirmações saírem automaticamente.
+            Ligue o WhatsApp do negócio. Clientes sem WhatsApp recebem SMS.
           </li>
         </ol>
         <div className="flex flex-col gap-2 sm:flex-row">

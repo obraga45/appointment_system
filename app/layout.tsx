@@ -17,9 +17,9 @@ const sourceSerif = Source_Serif_4({
 });
 
 export const metadata: Metadata = {
-  title: "TemVagas — Marcações e lembretes no WhatsApp",
+  title: "TemVagas — Marcações, WhatsApp e SMS",
   description:
-    "Os clientes marcam sozinhos. Confirmações e lembretes no WhatsApp do teu negócio. 15€/mês ou 149€ no primeiro ano.",
+    "Os clientes marcam sozinhos. Confirmações e lembretes no WhatsApp ou por SMS. 15€/mês ou 149€ no primeiro ano.",
   metadataBase: new URL("https://temvagas.pt"),
 };
 

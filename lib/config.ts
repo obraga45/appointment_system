@@ -51,3 +51,11 @@ export function isResendConfigured(): boolean {
 export function isEvolutionConfigured(): boolean {
   return Boolean(readEnv("EVOLUTION_API_URL") && readEnv("EVOLUTION_API_KEY"));
 }
+
+export function isTwilioSmsConfigured(): boolean {
+  return Boolean(
+    readEnv("TWILIO_ACCOUNT_SID") &&
+      readEnv("TWILIO_AUTH_TOKEN") &&
+      (readEnv("TWILIO_SMS_FROM") || readEnv("TWILIO_FROM_NUMBER")),
+  );
+}

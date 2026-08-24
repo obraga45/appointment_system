@@ -25,7 +25,7 @@ export function CancelBookingForm({ token, disabled }: { token: string; disabled
   }
 
   if (done) {
-    return <p className="text-sm">Marcação cancelada. Enviámos uma confirmação para o telemóvel, se o envio estiver activo.</p>;
+    return <p className="text-sm">Marcação cancelada. Enviámos uma confirmação por WhatsApp ou SMS, se o envio estiver activo.</p>;
   }
 
   return (

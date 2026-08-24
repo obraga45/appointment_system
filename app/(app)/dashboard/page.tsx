@@ -52,7 +52,7 @@ export default async function DashboardPage() {
       where: {
         status: "FAILED",
         sentAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
-        NOT: { errorMessage: "Fornecedor de mensagens não configurado" },
+        NOT: { errorMessage: { contains: "não configurado" } },
         appointment: {
           userId: user.id,
           status: { in: ["PENDING", "CONFIRMED"] },
@@ -100,7 +100,7 @@ export default async function DashboardPage() {
       {failedReminder ? (
         <Card className="border-destructive/40">
           <CardContent className="py-4 text-sm">
-            Há confirmações ou lembretes que falharam. Volte a ligar o WhatsApp neste cartão ou em Definições.
+            Há confirmações ou lembretes que falharam. Volte a ligar o WhatsApp neste cartão ou em Definições, e confirme o SMS (Twilio).
           </CardContent>
         </Card>
       ) : null}

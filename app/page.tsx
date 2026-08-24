@@ -25,11 +25,11 @@ export default function HomePage() {
             Para salões, clínicas e oficinas
           </p>
           <h1 className="font-serif text-[2rem] leading-tight tracking-tight sm:text-5xl md:text-6xl">
-            Os clientes marcam sozinhos. Tu recebes o lembrete no WhatsApp.
+            Os clientes marcam sozinhos. Tu recebes o aviso no telemóvel.
           </h1>
           <p className="mt-4 max-w-xl text-base text-muted-foreground sm:mt-6 sm:text-lg">
             Um link do teu espaço, agenda no telemóvel, confirmação e lembretes 24h e 2h antes — no
-            WhatsApp do teu negócio.
+            WhatsApp do teu negócio, ou por SMS se o cliente não tiver WhatsApp.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap">
             <Button size="lg" className="w-full sm:w-auto" asChild>
@@ -58,8 +58,8 @@ export default function HomePage() {
             {
               icon: MessageCircle,
               step: "3",
-              title: "O WhatsApp lembra",
-              body: "Confirmação na hora. Lembretes no dia anterior e 2 horas antes. É o teu número, não o nosso.",
+              title: "Tu e o cliente são avisados",
+              body: "Confirmação na hora. Lembretes no dia anterior e 2 horas antes. WhatsApp, ou SMS se não houver WhatsApp.",
             },
           ].map((item) => (
             <article key={item.title} className="rounded-2xl border bg-card/80 p-4 shadow-sm backdrop-blur sm:p-5">
@@ -104,7 +104,8 @@ export default function HomePage() {
             <div>
               <dt className="font-medium">O WhatsApp é da TemVagas?</dt>
               <dd className="mt-1 text-muted-foreground">
-                Não. Ligas o WhatsApp do teu negócio com um QR. As mensagens saem no teu nome.
+                Não. Ligas o WhatsApp do teu negócio com um QR. As mensagens saem no teu nome. Se o
+                cliente não tiver WhatsApp, enviamos SMS.
               </dd>
             </div>
             <div>
