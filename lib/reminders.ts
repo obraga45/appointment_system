@@ -7,7 +7,7 @@ import {
 } from "@prisma/client";
 import { Client } from "@upstash/qstash";
 import { prisma } from "@/lib/prisma";
-import { isQstashConfigured, publicCancelUrl } from "@/lib/config";
+import { appUrl, isQstashConfigured, publicCancelUrl } from "@/lib/config";
 import {
   buildCancelConfirmationMessage,
   buildConfirmationMessage,
