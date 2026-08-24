@@ -3,6 +3,7 @@ import { cache } from "react";
 import { BookingWizard } from "@/components/booking-wizard";
 import { SiteFooter } from "@/components/site-footer";
 import { BRAND } from "@/lib/brand";
+import { createBookingChallenge } from "@/lib/booking-challenge";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +51,8 @@ export default async function PublicBookingPage({ params }: PageProps) {
     notFound();
   }
 
+  const challenge = await createBookingChallenge();
+
   return (
     <div className="flex min-h-screen flex-col bg-[radial-gradient(circle_at_top,oklch(0.93_0.04_85),transparent_45%)]">
       <div className="mx-auto w-full max-w-xl flex-1 px-4 py-6 sm:py-10">
@@ -63,6 +66,7 @@ export default async function PublicBookingPage({ params }: PageProps) {
             businessSlug={business.slug}
             userId={business.id}
             businessName={business.businessName}
+            challenge={challenge}
             services={business.services.map((service) => ({
               id: service.id,
               name: service.name,

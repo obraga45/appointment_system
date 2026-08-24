@@ -1,22 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cancelUpcomingByPhone } from "@/actions/appointments";
+import { cancelUpcomingByPhoneForBusiness, extractEvolutionInstance, findBusinessByEvolutionInstance } from "@/lib/whatsapp-cancel";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { evolutionWebhookSecret, secretsEqual } from "@/lib/secrets";
 import { normalizePhone } from "@/lib/utils";
 
 function isAuthorized(request: NextRequest): boolean {
-  const webhookSecret = process.env.EVOLUTION_WEBHOOK_SECRET || process.env.CRON_SECRET;
-  const apiKey = process.env.EVOLUTION_API_KEY;
-  const querySecret = request.nextUrl.searchParams.get("secret");
-  const header =
-    request.headers.get("apikey") ||
-    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  const expected = evolutionWebhookSecret();
+  if (!expected) {
+    return false;
+  }
 
-  if (webhookSecret && querySecret === webhookSecret) {
-    return true;
-  }
-  if (apiKey && header === apiKey) {
-    return true;
-  }
-  return false;
+  const header =
+    request.headers.get("x-webhook-secret") ||
+    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
+    "";
+  const query =
+    request.nextUrl.searchParams.get("webhook_secret") ??
+    request.nextUrl.searchParams.get("secret") ??
+    "";
+
+  return secretsEqual(header, expected) || secretsEqual(query, expected);
 }
 
 function extractText(payload: unknown): string {
@@ -65,8 +68,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
+  const ip = await clientIp();
+  const allowed = await rateLimit({
+    name: "evo-webhook",
+    key: ip,
+    limit: 60,
+    windowSec: 60,
+  });
+  if (!allowed) {
+    return NextResponse.json({ error: "Demasiados pedidos" }, { status: 429 });
+  }
+
   const payload = (await request.json().catch(() => null)) as unknown;
   if (isFromMe(payload)) {
+    return NextResponse.json({ ok: true, ignored: true });
+  }
+
+  const instance =
+    extractEvolutionInstance(payload) || request.headers.get("x-evolution-instance") || "";
+  const business = await findBusinessByEvolutionInstance(instance);
+  if (!business) {
     return NextResponse.json({ ok: true, ignored: true });
   }
 
@@ -77,7 +98,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, ignored: true });
   }
 
-  const result = await cancelUpcomingByPhone(phone);
+  const result = await cancelUpcomingByPhoneForBusiness(business.id, phone);
   return NextResponse.json({
     ok: result.success,
     cancelled: result.success,

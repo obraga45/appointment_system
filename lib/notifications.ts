@@ -1,6 +1,7 @@
 import { formatInTimeZone } from "date-fns-tz";
 import { pt } from "date-fns/locale";
 import { isTwilioSmsConfigured, readEnv } from "@/lib/config";
+import { rateLimit } from "@/lib/rate-limit";
 import { DEFAULT_TIMEZONE } from "@/lib/timezone";
 import { formatPhoneDisplay, normalizePhone } from "@/lib/utils";
 
@@ -200,6 +201,23 @@ export async function sendSmsMessage(phone: string, message: string): Promise<Se
     return { ok: false, provider: "sms", channel: "sms", error: "SMS não configurado" };
   }
 
+  const destOk = await rateLimit({
+    name: "sms-dest",
+    key: normalized,
+    limit: 6,
+    windowSec: 60 * 60 * 24,
+  });
+  const globalOk = await rateLimit({
+    name: "sms-global",
+    key: "all",
+    limit: 120,
+    windowSec: 60 * 60 * 24,
+  });
+  if (!destOk || !globalOk) {
+    console.warn("[notifications] SMS recusado por limite diário");
+    return { ok: false, provider: "sms", channel: "sms", error: "Limite diário de SMS atingido" };
+  }
+
   try {
     await sendViaTwilioSms(normalized, message);
     return { ok: true, provider: "sms", channel: "sms" };
@@ -349,6 +367,8 @@ export function buildReminderMessage(input: {
   ];
   if (input.cancelUrl) {
     lines.push(`Cancelar: ${input.cancelUrl}`);
+  } else {
+    lines.push("Para cancelar, use o link da mensagem de confirmação.");
   }
   return lines.join("\n");
 }

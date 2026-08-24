@@ -68,7 +68,10 @@ async function alreadySent(appointmentId: string, type: NotificationType) {
   return existing?.status === NotificationStatus.SENT;
 }
 
-export async function sendAppointmentConfirmation(appointmentId: string) {
+export async function sendAppointmentConfirmation(
+  appointmentId: string,
+  cancelToken?: string,
+) {
   if (await alreadySent(appointmentId, NotificationType.CONFIRMATION)) {
     return { skipped: true as const };
   }
@@ -88,7 +91,7 @@ export async function sendAppointmentConfirmation(appointmentId: string) {
     serviceName: appointment.service.name,
     startTime: appointment.startTime,
     timeZone: appointment.user.timezone || DEFAULT_TIMEZONE,
-    cancelUrl: cancelUrl(appointment.cancelToken),
+    cancelUrl: cancelToken ? cancelUrl(cancelToken) : undefined,
   });
 
   const result = await sendOutboundMessage(
@@ -169,7 +172,7 @@ export async function sendAppointmentReminder(
     startTime: appointment.startTime,
     hoursAhead,
     timeZone: appointment.user.timezone || DEFAULT_TIMEZONE,
-    cancelUrl: cancelUrl(appointment.cancelToken),
+    cancelUrl: undefined,
   });
 
   const result = await sendOutboundMessage(

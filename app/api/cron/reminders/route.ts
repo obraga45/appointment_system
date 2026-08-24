@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processReminderWindow, retryFailedReminders } from "@/lib/reminders";
+import { secretsEqual } from "@/lib/secrets";
 
 function isAuthorized(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
@@ -7,9 +8,9 @@ function isAuthorized(request: NextRequest): boolean {
     return process.env.NODE_ENV !== "production";
   }
 
-  const auth = request.headers.get("authorization");
-  const headerSecret = request.headers.get("x-cron-secret");
-  return auth === `Bearer ${secret}` || headerSecret === secret;
+  const auth = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+  const headerSecret = request.headers.get("x-cron-secret") ?? "";
+  return secretsEqual(auth, secret) || secretsEqual(headerSecret, secret);
 }
 
 async function run() {

@@ -16,10 +16,12 @@ import {
   type DayAvailability,
   type TimeSlot,
 } from "@/lib/availability";
+import { verifyBookingChallenge } from "@/lib/booking-challenge";
 import { withBusinessLock } from "@/lib/lock";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import {
   cancelScheduledReminders,
+  hashToken,
   newCancelToken,
   notifyAppointmentCancelled,
   notifyBusinessOfBooking,
@@ -96,6 +98,7 @@ async function createAppointmentRecord(input: {
 
   const endTime = addMinutes(startTime, service.durationMinutes);
   const phone = normalizePhone(input.clientPhone);
+  const cancelToken = newCancelToken();
 
   try {
     const appointment = await withBusinessLock(input.userId, async (tx) => {
@@ -169,14 +172,14 @@ async function createAppointmentRecord(input: {
           endTime,
           status: AppointmentStatus.CONFIRMED,
           notes: input.notes || null,
-          cancelToken: newCancelToken(),
+          cancelTokenHash: hashToken(cancelToken),
         },
       });
     });
 
     after(async () => {
       await Promise.all([
-        sendAppointmentConfirmation(appointment.id).catch((error) => {
+        sendAppointmentConfirmation(appointment.id, cancelToken).catch((error) => {
           console.error("[appointments] Confirmação falhou:", error);
         }),
         notifyBusinessOfBooking(appointment.id).catch((error) => {
@@ -255,6 +258,10 @@ export async function createPublicAppointment(
 
   if (parsed.data.companyWebsite) {
     return ok({ id: "ok" });
+  }
+
+  if (!(await verifyBookingChallenge(parsed.data.challenge))) {
+    return fail("Sessão de marcação expirada. Atualize a página e tente novamente.");
   }
 
   const ip = await clientIp();
@@ -384,9 +391,20 @@ export async function cancelAppointmentByToken(
     return fail("Link de cancelamento inválido");
   }
 
+  const ip = await clientIp();
+  const allowed = await rateLimit({
+    name: "cancel-token",
+    key: ip,
+    limit: 10,
+    windowSec: 60 * 60,
+  });
+  if (!allowed) {
+    return fail("Demasiados pedidos. Tente mais tarde.");
+  }
+
   try {
     const appointment = await prisma.appointment.findUnique({
-      where: { cancelToken: token },
+      where: { cancelTokenHash: hashToken(token) },
       include: { user: true, service: true },
     });
 
@@ -419,39 +437,20 @@ export async function cancelAppointmentByToken(
 }
 
 export async function getPublicAppointmentByToken(token: string) {
-  const appointment = await prisma.appointment.findUnique({
-    where: { cancelToken: token },
-    include: { user: true, service: true },
-  });
-  return appointment;
-}
-
-export async function cancelUpcomingByPhone(phone: string): Promise<ActionResult<{ id: string }>> {
-  const normalized = normalizePhone(phone);
-  if (!normalized) {
-    return fail("Número inválido");
+  if (!token || token.length < 16) {
+    return null;
   }
 
-  const appointment = await prisma.appointment.findFirst({
-    where: {
-      clientPhone: normalized,
-      status: { in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED] },
-      startTime: { gte: new Date() },
+  return prisma.appointment.findUnique({
+    where: { cancelTokenHash: hashToken(token) },
+    select: {
+      status: true,
+      startTime: true,
+      clientName: true,
+      user: { select: { businessName: true, timezone: true } },
+      service: { select: { name: true } },
     },
-    orderBy: { startTime: "asc" },
   });
-
-  if (!appointment) {
-    return fail("Não encontrámos uma marcação futura neste número");
-  }
-
-  await prisma.appointment.update({
-    where: { id: appointment.id },
-    data: { status: AppointmentStatus.CANCELLED },
-  });
-  await cancelScheduledReminders(appointment.id);
-  await notifyAppointmentCancelled(appointment.id).catch(() => undefined);
-  return ok({ id: appointment.id });
 }
 
 async function loadSlotContext(userId: string, serviceId: string, date: string) {
@@ -496,6 +495,17 @@ export async function getAvailableSlots(rawInput: unknown): Promise<ActionResult
     return fail(zodErrorMessage(parsed.error));
   }
 
+  const ip = await clientIp();
+  const allowed = await rateLimit({
+    name: "slots",
+    key: ip,
+    limit: 60,
+    windowSec: 60,
+  });
+  if (!allowed) {
+    return fail("Demasiados pedidos. Aguarde um momento.");
+  }
+
   try {
     const ctx = await loadSlotContext(parsed.data.userId, parsed.data.serviceId, parsed.data.date);
     if (!ctx) {
@@ -524,6 +534,17 @@ export async function getDaySlots(
   const parsed = availabilityQuerySchema.safeParse(rawInput);
   if (!parsed.success) {
     return fail(zodErrorMessage(parsed.error));
+  }
+
+  const ip = await clientIp();
+  const allowed = await rateLimit({
+    name: "day-slots",
+    key: ip,
+    limit: 60,
+    windowSec: 60,
+  });
+  if (!allowed) {
+    return fail("Demasiados pedidos. Aguarde um momento.");
   }
 
   try {
@@ -557,6 +578,17 @@ export async function getAvailabilityOverview(
   const parsed = availabilityRangeSchema.safeParse(rawInput);
   if (!parsed.success) {
     return fail(zodErrorMessage(parsed.error));
+  }
+
+  const ip = await clientIp();
+  const allowed = await rateLimit({
+    name: "overview",
+    key: ip,
+    limit: 40,
+    windowSec: 60,
+  });
+  if (!allowed) {
+    return fail("Demasiados pedidos. Aguarde um momento.");
   }
 
   try {

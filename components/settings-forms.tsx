@@ -3,7 +3,7 @@
 import { useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { updateProfile, updateWorkingHours } from "@/actions/settings";
+import { deleteAccount, updateProfile, updateWorkingHours } from "@/actions/settings";
 import { CopyPublicLink } from "@/components/copy-public-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -216,6 +216,40 @@ export function SettingsForms({
             ))}
             <Button type="submit" className="w-full sm:w-auto" disabled={pending}>
               Guardar horários
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="border-destructive/30">
+        <CardHeader>
+          <CardTitle>Eliminar conta</CardTitle>
+          <CardDescription>
+            Apaga o negócio, marcações, serviços e o WhatsApp ligado. Esta acção não pode ser
+            desfeita.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = event.currentTarget;
+              const confirmation = String(new FormData(form).get("confirmName") ?? "");
+              startTransition(async () => {
+                const result = await deleteAccount(confirmation);
+                if (result && !result.success) {
+                  toast.error(result.error);
+                }
+              });
+            }}
+            className="grid gap-3"
+          >
+            <div className="grid gap-1.5">
+              <Label htmlFor="confirmName">Escreva o nome do negócio ({profile.businessName})</Label>
+              <Input id="confirmName" name="confirmName" autoComplete="off" required />
+            </div>
+            <Button type="submit" variant="destructive" className="w-full sm:w-auto" disabled={pending}>
+              Eliminar conta
             </Button>
           </form>
         </CardContent>

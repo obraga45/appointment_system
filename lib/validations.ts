@@ -63,6 +63,7 @@ export const createAppointmentSchema = z.object({
 
 export const publicBookingSchema = createAppointmentSchema.omit({ userId: true }).extend({
   companyWebsite: z.string().max(200).optional().or(z.literal("")),
+  challenge: z.string().min(10).max(200),
 });
 
 export const updateAppointmentStatusSchema = z.object({

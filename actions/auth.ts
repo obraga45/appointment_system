@@ -9,6 +9,7 @@ import { appUrl, isSupabaseConfigured } from "@/lib/config";
 import { sendPasswordResetLink } from "@/lib/email";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { hashToken } from "@/lib/reminders";
+import { logSecurityEvent } from "@/lib/security-log";
 import { clearSession, hashPassword, setSession, verifyPassword } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/utils";
@@ -36,6 +37,17 @@ export async function registerUser(rawInput: unknown): Promise<ActionResult<{ sl
   const parsed = registerSchema.safeParse(rawInput);
   if (!parsed.success) {
     return fail(zodErrorMessage(parsed.error));
+  }
+
+  const ip = await clientIp();
+  const allowed = await rateLimit({
+    name: "register",
+    key: ip,
+    limit: 5,
+    windowSec: 60 * 60,
+  });
+  if (!allowed) {
+    return fail("Demasiados registos. Tente mais tarde.");
   }
 
   const { name, email, password, businessName, phone } = parsed.data;
@@ -107,6 +119,23 @@ export async function loginUser(rawInput: unknown): Promise<ActionResult> {
     return fail(zodErrorMessage(parsed.error));
   }
 
+  const ip = await clientIp();
+  const allowedIp = await rateLimit({
+    name: "login-ip",
+    key: ip,
+    limit: 10,
+    windowSec: 15 * 60,
+  });
+  const allowedEmail = await rateLimit({
+    name: "login-email",
+    key: parsed.data.email,
+    limit: 8,
+    windowSec: 15 * 60,
+  });
+  if (!allowedIp || !allowedEmail) {
+    return fail("Demasiadas tentativas. Aguarde alguns minutos.");
+  }
+
   try {
     if (!isSupabaseConfigured()) {
       const user = await prisma.user.findUnique({
@@ -114,10 +143,12 @@ export async function loginUser(rawInput: unknown): Promise<ActionResult> {
       });
 
       if (!user?.passwordHash || !verifyPassword(parsed.data.password, user.passwordHash)) {
+        await logSecurityEvent({ action: "login_fail", ip });
         return fail("Email ou palavra-passe incorretos");
       }
 
       await setSession(user.id);
+      await logSecurityEvent({ action: "login_ok", userId: user.id, ip });
       return ok(undefined);
     }
 
@@ -128,8 +159,11 @@ export async function loginUser(rawInput: unknown): Promise<ActionResult> {
     });
 
     if (error) {
+      await logSecurityEvent({ action: "login_fail", ip });
       return fail("Email ou palavra-passe incorretos");
     }
+
+    await logSecurityEvent({ action: "login_ok", ip });
 
     return ok(undefined);
   } catch (error) {

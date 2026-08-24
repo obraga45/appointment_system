@@ -46,6 +46,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
 
   @@index([slug])
+  @@index([evolutionInstance])
 }
 
 model WorkingHour {
@@ -105,7 +106,7 @@ model Appointment {
   endTime           DateTime
   status            AppointmentStatus @default(PENDING)
   notes             String?
-  cancelToken       String            @unique
+  cancelTokenHash   String            @unique
   reminder24hJobId  String?
   reminder2hJobId   String?
   createdAt         DateTime          @default(now())
@@ -142,4 +143,15 @@ model PasswordResetToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model SecurityEvent {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
 }

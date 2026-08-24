@@ -1,4 +1,4 @@
-import { appUrl, isResendConfigured } from "@/lib/config";
+import { isResendConfigured } from "@/lib/config";
 import { BRAND } from "@/lib/brand";
 import { sendOutboundMessage } from "@/lib/notifications";
 
@@ -47,5 +47,5 @@ export async function sendPasswordResetLink(input: {
     }
   }
 
-  console.info(`[email] Reset de palavra-passe para ${input.email}: ${input.url} (app: ${appUrl()})`);
+  throw new Error("Não foi possível enviar o link de redefinição");
 }

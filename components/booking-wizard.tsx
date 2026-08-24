@@ -36,11 +36,13 @@ export function BookingWizard({
   userId,
   businessName,
   services,
+  challenge,
 }: {
   businessSlug: string;
   userId: string;
   businessName: string;
   services: ServiceOption[];
+  challenge: string;
 }) {
   const [step, setStep] = useState<Step>("service");
   const [serviceId, setServiceId] = useState("");
@@ -156,6 +158,7 @@ export function BookingWizard({
         date,
         time,
         companyWebsite: honeypot,
+        challenge,
       });
 
       if (!result.success) {

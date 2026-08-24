@@ -1,5 +1,5 @@
 const { PrismaClient } = require("@prisma/client");
-const { randomBytes, scryptSync } = require("node:crypto");
+const { createHash, randomBytes, scryptSync } = require("node:crypto");
 
 const prisma = new PrismaClient();
 
@@ -9,8 +9,9 @@ function hashPassword(password) {
   return `${salt}:${hash}`;
 }
 
-function cancelToken() {
-  return randomBytes(24).toString("hex");
+function cancelTokenHash() {
+  const token = randomBytes(24).toString("hex");
+  return createHash("sha256").update(token).digest("hex");
 }
 
 const DEFAULT_HOURS = [
@@ -89,7 +90,7 @@ async function main() {
         endTime: at(10, 45),
         status: "CONFIRMED",
         notes: "Cliente habitual.",
-        cancelToken: cancelToken(),
+        cancelTokenHash: cancelTokenHash(),
       },
     });
   }
@@ -104,7 +105,7 @@ async function main() {
         startTime: at(14, 30),
         endTime: at(15, 0),
         status: "PENDING",
-        cancelToken: cancelToken(),
+        cancelTokenHash: cancelTokenHash(),
       },
     });
   }

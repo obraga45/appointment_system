@@ -1,8 +1,15 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { fail, ok, zodErrorMessage, type ActionResult } from "@/lib/action-result";
+import { isSupabaseConfigured } from "@/lib/config";
+import { evolutionInstanceName, logoutEvolutionInstance } from "@/lib/evolution";
+import { clientIp } from "@/lib/rate-limit";
+import { logSecurityEvent } from "@/lib/security-log";
+import { clearSession } from "@/lib/session";
+import { createClient } from "@/lib/supabase/server";
 import { calendarDateInZone, DEFAULT_TIMEZONE } from "@/lib/timezone";
 import { slugify } from "@/lib/utils";
 import { profileSchema, scheduleExceptionSchema, workingHoursSchema } from "@/lib/validations";
@@ -126,4 +133,36 @@ export async function deleteScheduleException(id: string): Promise<ActionResult>
     console.error("[settings] deleteScheduleException:", error);
     return fail("Não foi possível reabrir esse horário");
   }
+}
+
+export async function deleteAccount(confirmation: string): Promise<never | ActionResult> {
+  const name = confirmation.trim();
+  if (name.length < 2) {
+    return fail("Escreva o nome do negócio para confirmar");
+  }
+
+  try {
+    const user = await requireUser();
+    if (name !== user.businessName) {
+      return fail("O nome do negócio não coincide");
+    }
+
+    const ip = await clientIp();
+    await logSecurityEvent({ action: "account_delete", userId: user.id, ip });
+    await logoutEvolutionInstance(evolutionInstanceName(user.evolutionInstance || user.slug)).catch(
+      () => undefined,
+    );
+    await prisma.user.delete({ where: { id: user.id } });
+  } catch (error) {
+    console.error("[settings] deleteAccount:", error);
+    return fail("Não foi possível eliminar a conta");
+  }
+
+  if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+  } else {
+    await clearSession();
+  }
+  redirect("/login");
 }
