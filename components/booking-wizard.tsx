@@ -259,12 +259,12 @@ export function BookingWizard({
 
             <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
               <LegendDot className="bg-primary" label="Com horários livres" />
-              <LegendDot className="bg-rose-300" label="Dia completo" />
-              <LegendDot className="bg-muted-foreground/30" label="Encerrado" />
+              <LegendDot className="bg-rose-400" label="Dia completo" />
+              <LegendDot className="border border-slate-400 bg-slate-200" label="Encerrado" />
             </div>
 
             {loadingCalendar ? (
-              <p className="text-sm text-muted-foreground">A carregar o calendário…</p>
+              <CalendarSkeleton />
             ) : (
               <div className="space-y-2">
                 <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-muted-foreground sm:text-xs">
@@ -293,8 +293,10 @@ export function BookingWizard({
                           "flex min-h-11 flex-col items-center justify-center rounded-lg border text-xs transition sm:aspect-square sm:rounded-xl sm:text-sm",
                           selected && "border-primary bg-primary text-primary-foreground",
                           !selected && day.status === "available" && "border-primary/30 bg-card hover:border-primary",
-                          !selected && day.status === "full" && "border-rose-200 bg-rose-50 text-rose-800 hover:border-rose-400",
-                          !selected && day.status === "closed" && "cursor-not-allowed border-transparent bg-muted text-muted-foreground/50",
+                          !selected && day.status === "full" && "border-rose-300 bg-rose-100 text-rose-900 hover:border-rose-500",
+                          !selected &&
+                            day.status === "closed" &&
+                            "cursor-not-allowed border-dashed border-slate-300 bg-slate-100 text-slate-400 line-through",
                         )}
                       >
                         <span>{Number(day.date.slice(8))}</span>
@@ -304,13 +306,19 @@ export function BookingWizard({
                           </span>
                         ) : null}
                         {day.status === "full" ? (
-                          <span className="hidden text-[10px] sm:block">ocupado</span>
+                          <span className="hidden text-[10px] font-medium sm:block">completo</span>
+                        ) : null}
+                        {day.status === "closed" ? (
+                          <span className="hidden text-[10px] no-underline sm:block">fecha</span>
                         ) : null}
                         {day.status === "available" ? (
                           <span className={cn("mt-0.5 h-1 w-1 rounded-full sm:hidden", selected ? "bg-primary-foreground" : "bg-primary")} />
                         ) : null}
                         {day.status === "full" ? (
-                          <span className="mt-0.5 h-1 w-1 rounded-full bg-rose-400 sm:hidden" />
+                          <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-rose-500 sm:hidden" />
+                        ) : null}
+                        {day.status === "closed" ? (
+                          <span className="mt-0.5 h-1 w-3 rounded-sm bg-slate-400 sm:hidden" />
                         ) : null}
                       </button>
                     );
@@ -326,52 +334,17 @@ export function BookingWizard({
                   : "Escolha um dia"}
               </p>
               {loadingSlots ? (
-                <p className="text-sm text-muted-foreground">A carregar horários…</p>
+                <SlotsSkeleton />
               ) : closed ? (
                 <p className="text-sm text-muted-foreground">Encerrado neste dia. Escolha outra data.</p>
               ) : slots.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Sem horários neste dia.</p>
               ) : (
                 <>
-                  <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
-                    {slots.map((slot) => {
-                      const available = slot.state === "available";
-                      return (
-                        <button
-                          key={slot.time}
-                          type="button"
-                          disabled={!available}
-                          onClick={() => {
-                            if (!available) return;
-                            setTime(slot.time);
-                            setStep("details");
-                          }}
-                          className={cn(
-                            "min-h-11 rounded-lg border px-2 py-2 text-xs sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-sm",
-                            available && "hover:border-primary",
-                            !available && "cursor-not-allowed border-dashed bg-muted text-muted-foreground line-through",
-                            slot.state === "occupied" && "bg-rose-50 text-rose-700/80",
-                            slot.state === "break" && "bg-amber-50 text-amber-800/80",
-                            slot.state === "blocked" && "bg-muted text-muted-foreground",
-                          )}
-                        >
-                          <span className="block">{slot.time}</span>
-                          {slot.state === "occupied" ? (
-                            <span className="hidden font-normal no-underline sm:inline"> ocupado</span>
-                          ) : null}
-                          {slot.state === "break" ? (
-                            <span className="hidden font-normal no-underline sm:inline"> pausa</span>
-                          ) : null}
-                          {slot.state === "blocked" ? (
-                            <span className="hidden font-normal no-underline sm:inline"> encerrado</span>
-                          ) : null}
-                          {slot.state === "past" ? (
-                            <span className="hidden font-normal no-underline sm:inline"> passou</span>
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <SlotGroups slots={slots} onPick={(picked) => {
+                    setTime(picked);
+                    setStep("details");
+                  }} />
                   {occupiedSlots.length + breakSlots.length + blockedSlots.length > 0 &&
                   availableSlots.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
@@ -436,6 +409,90 @@ export function BookingWizard({
           </CardContent>
         </Card>
       ) : null}
+    </div>
+  );
+}
+
+function SlotGroups({ slots, onPick }: { slots: TimeSlot[]; onPick: (time: string) => void }) {
+  const morning = slots.filter((slot) => slot.time < "12:00");
+  const afternoon = slots.filter((slot) => slot.time >= "12:00");
+  const groups = [
+    { label: "Manhã", items: morning },
+    { label: "Tarde", items: afternoon },
+  ].filter((group) => group.items.length > 0);
+
+  return (
+    <div className="space-y-4">
+      {groups.map((group) => (
+        <div key={group.label} className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{group.label}</p>
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
+            {group.items.map((slot) => {
+              const available = slot.state === "available";
+              return (
+                <button
+                  key={slot.time}
+                  type="button"
+                  disabled={!available}
+                  onClick={() => {
+                    if (!available) return;
+                    onPick(slot.time);
+                  }}
+                  className={cn(
+                    "min-h-11 rounded-lg border px-2 py-2 text-xs sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-sm",
+                    available && "hover:border-primary",
+                    !available && "cursor-not-allowed border-dashed bg-muted text-muted-foreground line-through",
+                    slot.state === "occupied" && "bg-rose-50 text-rose-700/80",
+                    slot.state === "break" && "bg-amber-50 text-amber-800/80",
+                    slot.state === "blocked" && "bg-muted text-muted-foreground",
+                  )}
+                >
+                  <span className="block">{slot.time}</span>
+                  {slot.state === "occupied" ? (
+                    <span className="hidden font-normal no-underline sm:inline"> ocupado</span>
+                  ) : null}
+                  {slot.state === "break" ? (
+                    <span className="hidden font-normal no-underline sm:inline"> pausa</span>
+                  ) : null}
+                  {slot.state === "blocked" ? (
+                    <span className="hidden font-normal no-underline sm:inline"> encerrado</span>
+                  ) : null}
+                  {slot.state === "past" ? (
+                    <span className="hidden font-normal no-underline sm:inline"> passou</span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CalendarSkeleton() {
+  return (
+    <div className="space-y-2" role="status" aria-label="A carregar o calendário">
+      <div className="grid grid-cols-7 gap-1">
+        {Array.from({ length: 7 }, (_, index) => (
+          <div key={`h-${index}`} className="h-3 animate-pulse rounded bg-muted" />
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {Array.from({ length: 14 }, (_, index) => (
+          <div key={`c-${index}`} className="min-h-11 animate-pulse rounded-lg bg-muted sm:aspect-square sm:rounded-xl" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SlotsSkeleton() {
+  return (
+    <div className="grid grid-cols-3 gap-2" role="status" aria-label="A carregar horários">
+      {Array.from({ length: 9 }, (_, index) => (
+        <div key={index} className="h-11 animate-pulse rounded-lg bg-muted" />
+      ))}
     </div>
   );
 }

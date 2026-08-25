@@ -2,10 +2,24 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { getWhatsAppStatus, relinkWhatsApp, startWhatsAppConnection, type WhatsAppStatus } from "@/actions/whatsapp";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+function connectionBadge(status: WhatsAppStatus) {
+  if (!status.configured) {
+    return <Badge variant="muted">Indisponível</Badge>;
+  }
+  if (status.connected) {
+    return <Badge variant="success">Conectado</Badge>;
+  }
+  if (status.state === "connecting" || status.qr) {
+    return <Badge variant="warning">A ligar</Badge>;
+  }
+  return <Badge variant="destructive">Desconectado</Badge>;
+}
 
 export function WhatsAppConnectCard({ initial }: { initial?: WhatsAppStatus }) {
   const [status, setStatus] = useState<WhatsAppStatus>(
@@ -70,69 +84,50 @@ export function WhatsAppConnectCard({ initial }: { initial?: WhatsAppStatus }) {
     startTransition(async () => apply(await relinkWhatsApp()));
   }
 
-  if (!status.configured) {
-    return (
-      <Card id="whatsapp">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5" />
-            WhatsApp
-          </CardTitle>
-          <CardDescription>As confirmações ainda não estão disponíveis. Tente mais tarde.</CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
-
   return (
     <Card id="whatsapp">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex flex-wrap items-center gap-2">
           <MessageCircle className="h-5 w-5" />
           WhatsApp
+          {connectionBadge(status)}
         </CardTitle>
         <CardDescription>
-          {status.connected
-            ? "As confirmações e o cancelar por mensagem saem deste telemóvel."
-            : "Ligue o WhatsApp do negócio. Os clientes recebem a confirmação nesse número."}
+          {!status.configured
+            ? "As confirmações ainda não estão disponíveis. Tente mais tarde."
+            : status.connected
+              ? "As confirmações e o cancelar por mensagem saem deste telemóvel."
+              : "Ligue o WhatsApp do negócio. Os clientes recebem a confirmação nesse número."}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {status.connected ? (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="flex items-center gap-2 text-sm font-medium text-emerald-700">
-              <CheckCircle2 className="h-4 w-4" />
-              Ligado
-            </p>
+      {status.configured ? (
+        <CardContent className="space-y-4">
+          {status.connected ? (
             <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={pending} onClick={onRelink}>
               Ligar outro telemóvel
             </Button>
-          </div>
-        ) : (
-          <>
-            {status.qr ? (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  No telemóvel: WhatsApp → Definições → Aparelhos ligados → Ligar um aparelho.
-                </p>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={status.qr}
-                  alt="QR para ligar o WhatsApp"
-                  className="mx-auto h-56 w-56 rounded-lg border bg-white p-2"
-                />
-                <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={pending} onClick={onConnect}>
-                  Gerar QR outra vez
-                </Button>
-              </div>
-            ) : (
-              <Button type="button" className="w-full sm:w-auto" disabled={pending} onClick={onConnect}>
-                Ligar WhatsApp
+          ) : status.qr ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                No telemóvel: WhatsApp → Definições → Aparelhos ligados → Ligar um aparelho.
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={status.qr}
+                alt="QR para ligar o WhatsApp"
+                className="mx-auto h-56 w-56 rounded-lg border bg-white p-2"
+              />
+              <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={pending} onClick={onConnect}>
+                Gerar QR outra vez
               </Button>
-            )}
-          </>
-        )}
-      </CardContent>
+            </div>
+          ) : (
+            <Button type="button" className="w-full sm:w-auto" disabled={pending} onClick={onConnect}>
+              Ligar WhatsApp
+            </Button>
+          )}
+        </CardContent>
+      ) : null}
     </Card>
   );
 }

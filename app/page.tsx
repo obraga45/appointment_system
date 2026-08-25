@@ -9,14 +9,12 @@ export default function HomePage() {
     <div className="flex min-h-dvh flex-col bg-[radial-gradient(circle_at_top_left,oklch(0.93_0.04_85),transparent_40%),radial-gradient(circle_at_bottom_right,oklch(0.9_0.05_162),transparent_35%)]">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-6">
         <span className="font-serif text-xl font-semibold tracking-tight sm:text-2xl">{BRAND.name}</span>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" className="hidden sm:inline-flex" asChild>
-            <Link href="/login">Entrar</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/register">Criar conta</Link>
-          </Button>
-        </div>
+        <Link
+          href="/login"
+          className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          Entrar
+        </Link>
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-6 sm:px-6 sm:pb-24 sm:pt-10">
@@ -31,12 +29,9 @@ export default function HomePage() {
             Um link do teu espaço, agenda no telemóvel, confirmação e lembretes 24h e 2h antes — no
             WhatsApp do teu negócio, ou por SMS se o cliente não tiver WhatsApp.
           </p>
-          <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap">
+          <div className="mt-6 sm:mt-8">
             <Button size="lg" className="w-full sm:w-auto" asChild>
               <Link href="/register">Começar agora</Link>
-            </Button>
-            <Button size="lg" variant="outline" className="w-full sm:w-auto" asChild>
-              <Link href="/login">Já tenho conta</Link>
             </Button>
           </div>
         </section>

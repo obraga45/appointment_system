@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { CardLoading } from "@/components/page-loading";
 import { ScheduleExceptionsForm } from "@/components/schedule-exceptions-form";
-import { SettingsForms } from "@/components/settings-forms";
+import { DeleteAccountCard, SettingsForms } from "@/components/settings-forms";
 import { WhatsAppStatusBlock } from "@/components/whatsapp-status-block";
 import { requireUser } from "@/lib/auth";
 import { publicBookingUrl } from "@/lib/config";
@@ -45,6 +45,7 @@ export default async function SettingsPage() {
         hours={hours}
       />
       <ScheduleExceptionsForm exceptions={exceptions} minDate={today} />
+      <DeleteAccountCard businessName={user.businessName} />
     </div>
   );
 }

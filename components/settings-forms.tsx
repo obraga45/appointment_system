@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition, type FormEvent } from "react";
+import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { deleteAccount, updateProfile, updateWorkingHours } from "@/actions/settings";
@@ -21,6 +21,21 @@ type HourRow = {
   isClosed: boolean;
 };
 
+function toHourRows(hours: HourRow[]): HourRow[] {
+  return WEEKDAY_LABELS.map((_, dayOfWeek) => {
+    return (
+      hours.find((hour) => hour.dayOfWeek === dayOfWeek) ?? {
+        dayOfWeek,
+        startTime: "09:00",
+        endTime: "18:00",
+        breakStart: null,
+        breakEnd: null,
+        isClosed: dayOfWeek === 0,
+      }
+    );
+  });
+}
+
 export function SettingsForms({
   profile,
   hours,
@@ -38,6 +53,11 @@ export function SettingsForms({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [hourRows, setHourRows] = useState(() => toHourRows(hours));
+
+  useEffect(() => {
+    setHourRows(toHourRows(hours));
+  }, [hours]);
 
   function onProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,20 +78,42 @@ export function SettingsForms({
     });
   }
 
+  function patchHour(dayOfWeek: number, patch: Partial<HourRow>) {
+    setHourRows((rows) => rows.map((row) => (row.dayOfWeek === dayOfWeek ? { ...row, ...patch } : row)));
+  }
+
+  function copyMondayToWeekdays() {
+    const monday = hourRows.find((row) => row.dayOfWeek === 1);
+    if (!monday) {
+      return;
+    }
+    setHourRows((rows) =>
+      rows.map((row) =>
+        row.dayOfWeek >= 2 && row.dayOfWeek <= 5
+          ? {
+              ...row,
+              startTime: monday.startTime,
+              endTime: monday.endTime,
+              breakStart: monday.breakStart,
+              breakEnd: monday.breakEnd,
+              isClosed: monday.isClosed,
+            }
+          : row,
+      ),
+    );
+    toast.success("Horário de segunda copiado para terça a sexta");
+  }
+
   function onHours(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const nextHours = WEEKDAY_LABELS.map((_, dayOfWeek) => ({
-      dayOfWeek,
-      startTime: String(form.get(`start-${dayOfWeek}`) ?? "09:00"),
-      endTime: String(form.get(`end-${dayOfWeek}`) ?? "18:00"),
-      breakStart: String(form.get(`break-start-${dayOfWeek}`) ?? ""),
-      breakEnd: String(form.get(`break-end-${dayOfWeek}`) ?? ""),
-      isClosed: form.get(`closed-${dayOfWeek}`) === "on",
-    }));
-
     startTransition(async () => {
-      const result = await updateWorkingHours({ hours: nextHours });
+      const result = await updateWorkingHours({
+        hours: hourRows.map((row) => ({
+          ...row,
+          breakStart: row.breakStart ?? "",
+          breakEnd: row.breakEnd ?? "",
+        })),
+      });
       if (!result.success) {
         toast.error(result.error);
         return;
@@ -80,19 +122,6 @@ export function SettingsForms({
       router.refresh();
     });
   }
-
-  const orderedHours = WEEKDAY_LABELS.map((_, dayOfWeek) => {
-    return (
-      hours.find((hour) => hour.dayOfWeek === dayOfWeek) ?? {
-        dayOfWeek,
-        startTime: "09:00",
-        endTime: "18:00",
-        breakStart: null,
-        breakEnd: null,
-        isClosed: dayOfWeek === 0,
-      }
-    );
-  });
 
   return (
     <div className="space-y-6">
@@ -165,12 +194,19 @@ export function SettingsForms({
         </CardHeader>
         <CardContent>
           <form onSubmit={onHours} className="space-y-3">
-            {orderedHours.map((hour) => (
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={copyMondayToWeekdays}>
+              Copiar segunda para terça a sexta
+            </Button>
+            {hourRows.map((hour) => (
               <div key={hour.dayOfWeek} className="space-y-3 rounded-lg border p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-medium">{WEEKDAY_LABELS[hour.dayOfWeek]}</p>
                   <label className="flex min-h-11 items-center gap-2 text-sm">
-                    <input type="checkbox" name={`closed-${hour.dayOfWeek}`} defaultChecked={hour.isClosed} />
+                    <input
+                      type="checkbox"
+                      checked={hour.isClosed}
+                      onChange={(event) => patchHour(hour.dayOfWeek, { isClosed: event.target.checked })}
+                    />
                     Encerrado
                   </label>
                 </div>
@@ -180,8 +216,8 @@ export function SettingsForms({
                     <Input
                       id={`start-${hour.dayOfWeek}`}
                       type="time"
-                      name={`start-${hour.dayOfWeek}`}
-                      defaultValue={hour.startTime}
+                      value={hour.startTime}
+                      onChange={(event) => patchHour(hour.dayOfWeek, { startTime: event.target.value })}
                     />
                   </div>
                   <div className="grid gap-1.5">
@@ -189,8 +225,8 @@ export function SettingsForms({
                     <Input
                       id={`end-${hour.dayOfWeek}`}
                       type="time"
-                      name={`end-${hour.dayOfWeek}`}
-                      defaultValue={hour.endTime}
+                      value={hour.endTime}
+                      onChange={(event) => patchHour(hour.dayOfWeek, { endTime: event.target.value })}
                     />
                   </div>
                   <div className="grid gap-1.5">
@@ -198,8 +234,8 @@ export function SettingsForms({
                     <Input
                       id={`break-start-${hour.dayOfWeek}`}
                       type="time"
-                      name={`break-start-${hour.dayOfWeek}`}
-                      defaultValue={hour.breakStart ?? ""}
+                      value={hour.breakStart ?? ""}
+                      onChange={(event) => patchHour(hour.dayOfWeek, { breakStart: event.target.value || null })}
                     />
                   </div>
                   <div className="grid gap-1.5">
@@ -207,8 +243,8 @@ export function SettingsForms({
                     <Input
                       id={`break-end-${hour.dayOfWeek}`}
                       type="time"
-                      name={`break-end-${hour.dayOfWeek}`}
-                      defaultValue={hour.breakEnd ?? ""}
+                      value={hour.breakEnd ?? ""}
+                      onChange={(event) => patchHour(hour.dayOfWeek, { breakEnd: event.target.value || null })}
                     />
                   </div>
                 </div>
@@ -220,40 +256,45 @@ export function SettingsForms({
           </form>
         </CardContent>
       </Card>
-
-      <Card className="border-destructive/30">
-        <CardHeader>
-          <CardTitle>Eliminar conta</CardTitle>
-          <CardDescription>
-            Apaga o negócio, marcações, serviços e o WhatsApp ligado. Esta acção não pode ser
-            desfeita.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              const form = event.currentTarget;
-              const confirmation = String(new FormData(form).get("confirmName") ?? "");
-              startTransition(async () => {
-                const result = await deleteAccount(confirmation);
-                if (result && !result.success) {
-                  toast.error(result.error);
-                }
-              });
-            }}
-            className="grid gap-3"
-          >
-            <div className="grid gap-1.5">
-              <Label htmlFor="confirmName">Escreva o nome do negócio ({profile.businessName})</Label>
-              <Input id="confirmName" name="confirmName" autoComplete="off" required />
-            </div>
-            <Button type="submit" variant="destructive" className="w-full sm:w-auto" disabled={pending}>
-              Eliminar conta
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
     </div>
+  );
+}
+
+export function DeleteAccountCard({ businessName }: { businessName: string }) {
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <Card className="border-destructive/40">
+      <CardHeader>
+        <CardTitle>Zona de perigo</CardTitle>
+        <CardDescription>
+          Apaga o negócio, marcações, serviços e o WhatsApp ligado. Esta acção não pode ser desfeita.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const confirmation = String(new FormData(form).get("confirmName") ?? "");
+            startTransition(async () => {
+              const result = await deleteAccount(confirmation);
+              if (result && !result.success) {
+                toast.error(result.error);
+              }
+            });
+          }}
+          className="grid gap-3"
+        >
+          <div className="grid gap-1.5">
+            <Label htmlFor="confirmName">Escreva o nome do negócio ({businessName})</Label>
+            <Input id="confirmName" name="confirmName" autoComplete="off" required />
+          </div>
+          <Button type="submit" variant="destructive" className="w-full sm:w-auto" disabled={pending}>
+            Eliminar conta
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

@@ -22,27 +22,25 @@ export function OnboardingCard({
       <CardHeader>
         <CardTitle className="font-serif text-xl">Primeiros passos</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 text-sm">
-        <ol className="list-decimal space-y-2 pl-5">
-          <li className={hasServices ? "text-muted-foreground line-through" : undefined}>
-            Crie pelo menos um serviço para os clientes marcarem em {host}.
-          </li>
-          <li className={whatsappConnected ? "text-muted-foreground line-through" : undefined}>
-            Ligue o WhatsApp do negócio. Clientes sem WhatsApp recebem SMS.
-          </li>
-        </ol>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          {hasServices ? null : (
-            <Button asChild>
-              <Link href="/services">Criar o primeiro serviço</Link>
-            </Button>
-          )}
-          {whatsappConnected ? null : (
-            <Button variant={hasServices ? "default" : "outline"} asChild>
-              <Link href="#whatsapp">Ligar WhatsApp</Link>
-            </Button>
-          )}
-        </div>
+      <CardContent className="space-y-2">
+        {hasServices ? (
+          <p className="text-sm text-muted-foreground line-through">Serviço criado para {host}</p>
+        ) : (
+          <Button asChild className="h-auto w-full justify-start whitespace-normal py-3 text-left">
+            <Link href="/services">Criar o primeiro serviço para os clientes marcarem em {host}</Link>
+          </Button>
+        )}
+        {whatsappConnected ? (
+          <p className="text-sm text-muted-foreground line-through">WhatsApp do negócio ligado</p>
+        ) : (
+          <Button
+            asChild
+            variant={hasServices ? "default" : "outline"}
+            className="h-auto w-full justify-start whitespace-normal py-3 text-left"
+          >
+            <Link href="#whatsapp">Ligar o WhatsApp do negócio</Link>
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
