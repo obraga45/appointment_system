@@ -27,7 +27,7 @@ export default function HomePage() {
           </h1>
           <p className="mt-4 max-w-xl text-base text-muted-foreground sm:mt-6 sm:text-lg">
             Um link do teu espaço, agenda no telemóvel, confirmação e lembretes 24h e 2h antes — no
-            WhatsApp do teu negócio, ou por SMS se o cliente não tiver WhatsApp.
+            WhatsApp do teu negócio. O cliente deixa um número com WhatsApp.
           </p>
           <div className="mt-6 sm:mt-8">
             <Button size="lg" className="w-full sm:w-auto" asChild>
@@ -54,7 +54,7 @@ export default function HomePage() {
               icon: MessageCircle,
               step: "3",
               title: "Tu e o cliente são avisados",
-              body: "Confirmação na hora. Lembretes no dia anterior e 2 horas antes. WhatsApp, ou SMS se não houver WhatsApp.",
+              body: "Confirmação na hora. Lembretes no dia anterior e 2 horas antes, no WhatsApp.",
             },
           ].map((item) => (
             <article key={item.title} className="rounded-2xl border bg-card/80 p-4 shadow-sm backdrop-blur sm:p-5">
@@ -99,8 +99,8 @@ export default function HomePage() {
             <div>
               <dt className="font-medium">O WhatsApp é da TemVagas?</dt>
               <dd className="mt-1 text-muted-foreground">
-                Não. Ligas o WhatsApp do teu negócio com um QR. As mensagens saem no teu nome. Se o
-                cliente não tiver WhatsApp, enviamos SMS.
+                Não. Ligas o WhatsApp do teu negócio com um QR. As mensagens saem no teu nome. O
+                cliente deixa um número com WhatsApp.
               </dd>
             </div>
             <div>

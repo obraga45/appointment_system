@@ -189,7 +189,7 @@ export function BookingWizard({
             {service.name} em {format(combineDateAndTime(date, time), "d 'de' MMMM 'às' HH:mm", { locale: pt })}.
           </p>
           <p className="text-sm text-muted-foreground">
-            Enviámos uma confirmação por WhatsApp ou SMS, se o envio de mensagens estiver ativo.
+            Enviámos uma confirmação por WhatsApp, se o envio de mensagens estiver ativo.
           </p>
         </CardContent>
       </Card>
@@ -375,14 +375,19 @@ export function BookingWizard({
               <Input id="clientName" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="clientPhone">Telemóvel</Label>
+              <Label htmlFor="clientPhone">Telemóvel (WhatsApp)</Label>
               <Input
                 id="clientPhone"
                 value={clientPhone}
                 onChange={(e) => setClientPhone(e.target.value)}
                 placeholder="9xx xxx xxx"
+                inputMode="tel"
+                autoComplete="tel"
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                A confirmação e os lembretes vão por WhatsApp para este número.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="clientEmail">Email (opcional)</Label>

@@ -59,7 +59,8 @@ export default async function PublicBookingPage({ params }: PageProps) {
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary sm:text-sm">{BRAND.name}</p>
         <h1 className="mt-2 font-serif text-3xl font-semibold sm:text-4xl">{business.businessName}</h1>
         <p className="mt-2 text-muted-foreground">
-          Veja os dias já ocupados, escolha um horário livre e deixe o seu telemóvel. Recebe confirmação automática.
+          Veja os dias já ocupados, escolha um horário livre e deixe um número com WhatsApp. Recebe
+          confirmação automática.
         </p>
         <div className="mt-8">
           <BookingWizard

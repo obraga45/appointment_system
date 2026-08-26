@@ -93,7 +93,7 @@ export default async function DashboardPage() {
       {failedReminder ? (
         <Card className="border-destructive/40">
           <CardContent className="py-4 text-sm">
-            Há confirmações ou lembretes que falharam. Volte a ligar o WhatsApp neste cartão ou em Definições, e confirme o SMS (Twilio).
+            Há confirmações ou lembretes que falharam. Volte a ligar o WhatsApp neste cartão ou em Definições.
           </CardContent>
         </Card>
       ) : null}

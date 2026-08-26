@@ -112,7 +112,9 @@ export function NewAppointmentForm({
     <Card>
       <CardHeader>
         <CardTitle>Nova marcação</CardTitle>
-        <CardDescription>O cliente recebe confirmação por WhatsApp ou SMS. O negócio também é avisado.</CardDescription>
+        <CardDescription>
+          O cliente recebe confirmação por WhatsApp. Use um número com WhatsApp.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="grid gap-5">
@@ -175,8 +177,18 @@ export function NewAppointmentForm({
               <Input id="clientName" name="clientName" required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="clientPhone">Telemóvel</Label>
-              <Input id="clientPhone" name="clientPhone" required placeholder="9xx xxx xxx" />
+              <Label htmlFor="clientPhone">Telemóvel (WhatsApp)</Label>
+              <Input
+                id="clientPhone"
+                name="clientPhone"
+                required
+                placeholder="9xx xxx xxx"
+                inputMode="tel"
+                autoComplete="tel"
+              />
+              <p className="text-xs text-muted-foreground">
+                A confirmação e os lembretes vão por WhatsApp para este número.
+              </p>
             </div>
           </div>
           <div className="grid gap-2">

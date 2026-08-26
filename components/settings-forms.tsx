@@ -141,7 +141,8 @@ export function SettingsForms({
         <CardHeader>
           <CardTitle>Perfil do negócio</CardTitle>
           <CardDescription>
-            O telemóvel recebe um aviso quando entra uma marcação nova (WhatsApp ou SMS).
+            Tentamos avisar este número por WhatsApp quando entra uma marcação nova. Se for o mesmo
+            telemóvel ligado ao QR, o aviso aparece nas conversas com os clientes.
           </CardDescription>
         </CardHeader>
         <CardContent>

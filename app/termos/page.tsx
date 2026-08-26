@@ -23,9 +23,9 @@ export default function TermosPage() {
         actua como responsável pelo tratamento.
       </p>
       <p>
-        As confirmações e lembretes são enviados pelo WhatsApp do próprio negócio (ou SMS, se
-        configurado). O Cliente reconhece que estas redes são de terceiros e que a entrega das
-        mensagens não pode ser garantida a 100%.
+        As confirmações e lembretes são enviados pelo WhatsApp do próprio negócio. O Cliente
+        reconhece que estas redes são de terceiros e que a entrega das mensagens não pode ser
+        garantida a 100%.
       </p>
       <p>
         É proibido usar a plataforma para spam, fraude ou tratamento ilícito de dados pessoais. Podemos

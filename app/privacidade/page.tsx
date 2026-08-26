@@ -25,13 +25,13 @@ export default function PrivacidadePage() {
       </p>
       <p>
         <strong className="text-foreground">Comunicações:</strong> o telemóvel é usado para enviar
-        confirmação, lembretes e o link de cancelamento, por WhatsApp ou SMS. O estabelecimento
-        também pode ser avisado no telemóvel da conta. O número pode ser transmitido ao fornecedor
-        de mensagens escolhido. O WhatsApp usado é, em regra, o do próprio estabelecimento.
+        confirmação, lembretes e o link de cancelamento, por WhatsApp. O estabelecimento também pode
+        ser avisado no telemóvel da conta. O número pode ser transmitido ao fornecedor de mensagens
+        escolhido. O WhatsApp usado é, em regra, o do próprio estabelecimento.
       </p>
       <p>
         Alojamos a aplicação e a base de dados na União Europeia (por exemplo Vercel). Os fornecedores
-        de WhatsApp/SMS podem tratar números fora da UE; nesse caso aplica-se o capítulo V do RGPD.
+        de WhatsApp podem tratar números fora da UE; nesse caso aplica-se o capítulo V do RGPD.
       </p>
       <p>
         Direitos de acesso, rectificação, apagamento e oposição: o utente deve contactar o
