@@ -1,12 +1,13 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { fail, ok, zodErrorMessage, type ActionResult } from "@/lib/action-result";
 import { DEFAULT_WORKING_HOURS } from "@/lib/availability";
 import { appUrl, isSupabaseConfigured } from "@/lib/config";
-import { sendPasswordResetLink } from "@/lib/email";
+import { notifyOwnerAuthEvent, sendPasswordResetLink } from "@/lib/email";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { hashToken } from "@/lib/reminders";
 import { logSecurityEvent } from "@/lib/security-log";
@@ -31,6 +32,18 @@ async function uniqueSlug(businessName: string): Promise<string> {
   }
 
   return candidate;
+}
+
+function queueOwnerAuthNotice(input: {
+  kind: "register" | "login";
+  name: string;
+  email: string;
+  businessName?: string | null;
+  phone?: string | null;
+  slug?: string | null;
+  ip?: string | null;
+}) {
+  after(() => notifyOwnerAuthEvent(input));
 }
 
 export async function registerUser(rawInput: unknown): Promise<ActionResult<{ slug: string }>> {
@@ -75,6 +88,15 @@ export async function registerUser(rawInput: unknown): Promise<ActionResult<{ sl
       });
 
       await setSession(user.id);
+      queueOwnerAuthNotice({
+        kind: "register",
+        name: user.name,
+        email: user.email,
+        businessName: user.businessName,
+        phone: user.phone,
+        slug: user.slug,
+        ip,
+      });
       return ok({ slug });
     }
 
@@ -104,6 +126,16 @@ export async function registerUser(rawInput: unknown): Promise<ActionResult<{ sl
         evolutionInstance: slug,
         workingHours: { create: DEFAULT_WORKING_HOURS },
       },
+    });
+
+    queueOwnerAuthNotice({
+      kind: "register",
+      name,
+      email,
+      businessName,
+      phone: phone || null,
+      slug,
+      ip,
     });
 
     return ok({ slug });
@@ -149,6 +181,15 @@ export async function loginUser(rawInput: unknown): Promise<ActionResult> {
 
       await setSession(user.id);
       await logSecurityEvent({ action: "login_ok", userId: user.id, ip });
+      queueOwnerAuthNotice({
+        kind: "login",
+        name: user.name,
+        email: user.email,
+        businessName: user.businessName,
+        phone: user.phone,
+        slug: user.slug,
+        ip,
+      });
       return ok(undefined);
     }
 
@@ -164,6 +205,19 @@ export async function loginUser(rawInput: unknown): Promise<ActionResult> {
     }
 
     await logSecurityEvent({ action: "login_ok", ip });
+    const profile = await prisma.user.findUnique({
+      where: { email: parsed.data.email },
+      select: { name: true, email: true, businessName: true, phone: true, slug: true },
+    });
+    queueOwnerAuthNotice({
+      kind: "login",
+      name: profile?.name || parsed.data.email,
+      email: parsed.data.email,
+      businessName: profile?.businessName,
+      phone: profile?.phone,
+      slug: profile?.slug,
+      ip,
+    });
 
     return ok(undefined);
   } catch (error) {
