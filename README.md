@@ -28,8 +28,10 @@ npm run db:seed
 npm run dev
 ```
 
-Conta demo: `demo@temvagas.pt` / `demo1234`  
-Página pública: http://localhost:3000/agendar/salao-oliveira
+Conta demo **apenas local** (depois de `npm run db:seed`): o terminal mostra o email e a password.
+Não cries esta conta em produção.
+
+Página pública local: http://localhost:3000/agendar/salao-oliveira
 
 Em produção, `NEXT_PUBLIC_APP_URL=https://temvagas.pt`. `SESSION_SECRET` e `CRON_SECRET` devem ser valores longos e aleatórios.
 
@@ -43,7 +45,7 @@ Links antigos `/book/...` redireccionam para `/agendar/...`.
 
 Ver `deploy/evolution`. Cada negócio liga o próprio WhatsApp (QR). Confirmações e lembretes saem no WhatsApp do negócio; o cliente deixa um número com WhatsApp. O telemóvel do negócio pode receber aviso de marcações novas. Variáveis na Vercel: `MESSAGE_PROVIDER`, `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_WEBHOOK_SECRET`, e opcionalmente QStash / Resend (`EMAIL_FROM=TemVagas <info@temvagas.pt>`).
 
-Webhook: `POST /api/webhooks/evolution?secret=CRON_SECRET`. Mensagens com «cancelar» desmarcam a próxima visita desse número.
+Webhook: `POST /api/webhooks/evolution` com o header `x-webhook-secret` (valor de `EVOLUTION_WEBHOOK_SECRET`, não o `CRON_SECRET`). Mensagens com «cancelar» desmarcam a próxima visita desse número.
 
 ## Fluxos
 

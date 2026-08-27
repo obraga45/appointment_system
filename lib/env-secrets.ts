@@ -11,18 +11,7 @@ function isWeakSecret(value: string) {
 }
 
 export function hmacSecret(): string {
-  const session = (process.env.SESSION_SECRET ?? "").trim();
-  if (!isWeakSecret(session)) {
-    return session;
-  }
-  const cron = (process.env.CRON_SECRET ?? "").trim();
-  if (!isWeakSecret(cron)) {
-    return cron;
-  }
-  if (isProduction()) {
-    throw new Error("SESSION_SECRET em falta em produção");
-  }
-  return "marcaja-dev-secret";
+  return sessionSecret();
 }
 
 export function sessionSecret(): string {

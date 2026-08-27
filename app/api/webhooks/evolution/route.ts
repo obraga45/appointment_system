@@ -14,10 +14,8 @@ function isAuthorized(request: NextRequest): boolean {
     request.headers.get("x-webhook-secret") ||
     request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
     "";
-  const query =
-    request.nextUrl.searchParams.get("webhook_secret") ??
-    request.nextUrl.searchParams.get("secret") ??
-    "";
+  // Query só como fallback (Evolution por vezes não envia headers). Não uses CRON_SECRET aqui.
+  const query = request.nextUrl.searchParams.get("webhook_secret") ?? "";
 
   return secretsEqual(header, expected) || secretsEqual(query, expected);
 }

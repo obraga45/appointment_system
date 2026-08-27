@@ -51,6 +51,10 @@ async function testChallenge() {
   assert("aceita após 1s", (await verifyBookingChallenge(fresh, now + 1500)) === true);
   assert("rejeita após 2h", (await verifyBookingChallenge(fresh, now + 3 * 60 * 60 * 1000)) === false);
   assert("rejeita adulterado", (await verifyBookingChallenge(`${fresh}x`, now + 1500)) === false);
+  assert(
+    "rejeita formato antigo sem nonce",
+    (await verifyBookingChallenge(`${now}.deadbeef`, now + 1500)) === false,
+  );
 }
 
 function testTokens() {
@@ -231,6 +235,9 @@ function testSourceGuards() {
   const webhook = readFileSync(new URL("../app/api/webhooks/evolution/route.ts", import.meta.url), "utf8");
   assert("webhook não aceita EVOLUTION_API_KEY", !webhook.includes("EVOLUTION_API_KEY"));
   assert("webhook usa secret dedicado", webhook.includes("evolutionWebhookSecret"));
+  assert("webhook não aceita ?secret=", !webhook.includes('get("secret")'));
+  const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
+  assert("README não publica a password demo", !readme.includes("demo1234"));
 }
 
 async function main() {

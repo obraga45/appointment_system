@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { fail, ok, zodErrorMessage, type ActionResult } from "@/lib/action-result";
 import { DEFAULT_WORKING_HOURS } from "@/lib/availability";
 import { appUrl, isSupabaseConfigured } from "@/lib/config";
@@ -71,7 +72,7 @@ export async function registerUser(rawInput: unknown): Promise<ActionResult<{ sl
     if (!isSupabaseConfigured()) {
       const existing = await prisma.user.findUnique({ where: { email } });
       if (existing) {
-        return fail("Já existe uma conta com este email");
+        return fail("Não foi possível criar a conta. Tente iniciar sessão.");
       }
 
       const user = await prisma.user.create({
@@ -108,7 +109,7 @@ export async function registerUser(rawInput: unknown): Promise<ActionResult<{ sl
     });
 
     if (error) {
-      return fail(error.message);
+      return fail("Não foi possível criar a conta. Tente novamente.");
     }
 
     if (!data.user) {
@@ -140,6 +141,9 @@ export async function registerUser(rawInput: unknown): Promise<ActionResult<{ sl
 
     return ok({ slug });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return fail("Não foi possível criar a conta. Tente iniciar sessão.");
+    }
     console.error("[auth] registerUser:", error);
     return fail("Não foi possível criar a conta. Tente novamente.");
   }

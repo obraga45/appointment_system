@@ -26,3 +26,15 @@ service-account.json
 
 deploy/evolution/whatsapp-qr.png
 deploy/evolution/.instance-*.json
+
+# Scripts locais com IP do VPS, telemóveis ou dumps da BD — não vão para o GitHub
+deploy/evolution/.env.vps
+deploy/evolution/bootstrap.sh
+deploy/evolution/check_db.js
+deploy/evolution/create_qr.py
+deploy/evolution/deploy_vps.py
+deploy/evolution/diagnose.py
+deploy/evolution/last_appt.js
+deploy/evolution/send_test.py
+deploy/evolution/set_vercel_env.py
+*.mp4

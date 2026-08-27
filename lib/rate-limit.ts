@@ -53,7 +53,7 @@ export async function rateLimit(input: {
   }
 
   if (isProduction()) {
-    console.warn("[rate-limit] Upstash Redis não configurado; a usar memória do processo.");
+    console.warn("[rate-limit] Upstash Redis não configurado; a usar memória do processo (ineficaz com várias instâncias).");
   }
 
   return memoryLimit(identity, input.limit, input.windowSec * 1000);
