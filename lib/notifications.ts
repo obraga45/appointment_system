@@ -21,6 +21,36 @@ function getProvider(): MessageProvider | "none" {
   return "none";
 }
 
+/** Instância WhatsApp da TemVagas (não a do salão). */
+export function platformEvolutionInstance(): string {
+  return readEnv("EVOLUTION_INSTANCE");
+}
+
+/**
+ * O WhatsApp não entrega mensagem de um número para si próprio.
+ * Avisos ao espaço saem da instância da TemVagas quando o destino é o telemóvel ligado ao QR.
+ */
+export function businessAlertSenderInstance(input: {
+  destinationPhone: string;
+  businessInstance?: string | null;
+  connectedPhone?: string | null;
+  platformInstance?: string | null;
+}): string | null {
+  const platform = (input.platformInstance ?? platformEvolutionInstance()).trim();
+  const business = (input.businessInstance ?? "").trim();
+  const dest = normalizePhone(input.destinationPhone);
+  const connected = input.connectedPhone ? normalizePhone(input.connectedPhone) : "";
+  const toOwnWhatsApp = Boolean(connected && dest === connected);
+
+  if (platform && platform !== business) {
+    return platform;
+  }
+  if (toOwnWhatsApp) {
+    return null;
+  }
+  return business || platform || null;
+}
+
 function isConfigured(provider: MessageProvider | "none"): boolean {
   if (provider === "evolution") {
     return Boolean(readEnv("EVOLUTION_API_URL") && readEnv("EVOLUTION_API_KEY"));

@@ -1,4 +1,5 @@
 import { readEnv } from "@/lib/config";
+import { normalizePhone } from "@/lib/utils";
 
 export type EvolutionState = "open" | "connecting" | "close" | "unknown";
 
@@ -91,6 +92,72 @@ export function parseEvolutionState(payload: unknown): EvolutionState {
     return "close";
   }
   return "unknown";
+}
+
+function jidToPhone(value: string): string | null {
+  const user = value.split("@")[0] ?? "";
+  const digits = (user.split(":")[0] ?? "").replace(/\D/g, "");
+  if (digits.length < 9) {
+    return null;
+  }
+  return normalizePhone(digits);
+}
+
+function instanceNameOf(record: Record<string, unknown>): string {
+  const nested = asRecord(record.instance);
+  return String(record.instanceName ?? record.name ?? nested.instanceName ?? nested.name ?? "").trim();
+}
+
+export function extractEvolutionOwnerPhone(payload: unknown, instance?: string): string | null {
+  const wanted = (instance ?? "").trim().toLowerCase();
+  const items = Array.isArray(payload) ? payload : [payload];
+
+  for (const item of items) {
+    const rec = asRecord(item);
+    const nested = asRecord(rec.instance);
+    if (wanted) {
+      const name = instanceNameOf(rec).toLowerCase();
+      if (name !== wanted) {
+        continue;
+      }
+    }
+
+    const candidates = [
+      rec.ownerJid,
+      rec.owner,
+      rec.wuid,
+      rec.wid,
+      nested.ownerJid,
+      nested.owner,
+      nested.wuid,
+      nested.wid,
+    ];
+    for (const candidate of candidates) {
+      if (typeof candidate === "string") {
+        const phone = jidToPhone(candidate);
+        if (phone) {
+          return phone;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+export async function getEvolutionOwnerNumber(instance: string): Promise<string | null> {
+  if (!isEvolutionApiReady() || !instance) {
+    return null;
+  }
+
+  const named = await evoFetch(`/instance/fetchInstances?instanceName=${encodeURIComponent(instance)}`);
+  const fromNamed = extractEvolutionOwnerPhone(named.json, instance);
+  if (fromNamed) {
+    return fromNamed;
+  }
+
+  const all = await evoFetch("/instance/fetchInstances");
+  return extractEvolutionOwnerPhone(all.json, instance);
 }
 
 export async function getEvolutionState(instance: string): Promise<EvolutionState> {

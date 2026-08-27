@@ -14,9 +14,11 @@ import {
   buildCancelConfirmationMessage,
   buildConfirmationMessage,
   buildReminderMessage,
+  businessAlertSenderInstance,
   sendBusinessAlert,
   sendOutboundMessage,
 } from "@/lib/notifications";
+import { getEvolutionOwnerNumber } from "@/lib/evolution";
 import { DEFAULT_TIMEZONE } from "@/lib/timezone";
 import { normalizePhone } from "@/lib/utils";
 
@@ -112,35 +114,68 @@ export async function notifyBusinessOfBooking(appointmentId: string) {
     where: { id: appointmentId },
     include: { user: true, service: true },
   });
-  if (!appointment?.user.phone) {
+  if (!appointment) {
     return { skipped: true as const };
   }
 
-  const salonPhone = appointment.user.phone;
-  if (samePhone(salonPhone, appointment.clientPhone)) {
-    return { skipped: true as const };
-  }
-
-  const message = buildBusinessAlertMessage({
-    businessName: appointment.user.businessName,
-    clientName: appointment.clientName,
-    clientPhone: appointment.clientPhone,
-    serviceName: appointment.service.name,
-    startTime: appointment.startTime,
-    timeZone: appointment.user.timezone || DEFAULT_TIMEZONE,
-  });
-
-  const result = await sendBusinessAlert(
-    salonPhone,
-    message,
-    appointment.user.evolutionInstance,
+  const delivered = await sendBusinessWhatsApp(
+    appointment.user,
+    buildBusinessAlertMessage({
+      businessName: appointment.user.businessName,
+      clientName: appointment.clientName,
+      clientPhone: appointment.clientPhone,
+      serviceName: appointment.service.name,
+      startTime: appointment.startTime,
+      timeZone: appointment.user.timezone || DEFAULT_TIMEZONE,
+    }),
+    appointment.clientPhone,
   );
-  await logNotification(appointmentId, NotificationType.BUSINESS_ALERT, result);
-  return { skipped: false as const, ok: result.ok, error: result.error };
+
+  if (delivered.skipped) {
+    return { skipped: true as const };
+  }
+
+  await logNotification(appointmentId, NotificationType.BUSINESS_ALERT, delivered);
+  return { skipped: false as const, ok: delivered.ok, error: delivered.error };
 }
 
 function samePhone(a: string, b: string) {
   return normalizePhone(a) === normalizePhone(b);
+}
+
+async function sendBusinessWhatsApp(
+  user: { phone: string | null; evolutionInstance: string | null },
+  message: string,
+  clientPhone?: string,
+) {
+  const connectedPhone = user.evolutionInstance
+    ? await getEvolutionOwnerNumber(user.evolutionInstance)
+    : null;
+  const dest = user.phone || connectedPhone;
+  if (!dest) {
+    console.warn("[reminders] Negócio sem telemóvel para avisos de marcação");
+    return { ok: false, skipped: true as const, error: "Sem telemóvel para avisos" };
+  }
+
+  if (clientPhone && samePhone(dest, clientPhone)) {
+    console.warn("[reminders] Aviso ao negócio omitido: telemóvel igual ao do cliente");
+    return { ok: false, skipped: true as const, error: "Telemóvel igual ao do cliente" };
+  }
+
+  const instance = businessAlertSenderInstance({
+    destinationPhone: dest,
+    businessInstance: user.evolutionInstance,
+    connectedPhone,
+  });
+  if (!instance) {
+    console.warn(
+      "[reminders] Não dá para avisar o próprio WhatsApp ligado ao QR. Liga a instância da TemVagas ou um telemóvel diferente.",
+    );
+    return { ok: false, skipped: true as const, error: "Sem instância para avisar o espaço" };
+  }
+
+  const result = await sendBusinessAlert(dest, message, instance);
+  return { ...result, skipped: false as const };
 }
 
 export async function sendAppointmentReminder(
@@ -200,16 +235,17 @@ export async function notifyAppointmentCancelled(appointmentId: string) {
   });
   await sendOutboundMessage(appointment.clientPhone, clientMessage, instance);
 
-  if (appointment.user.phone && !samePhone(appointment.user.phone, appointment.clientPhone)) {
-    const businessMessage = buildBusinessCancelMessage({
+  await sendBusinessWhatsApp(
+    appointment.user,
+    buildBusinessCancelMessage({
       businessName: appointment.user.businessName,
       clientName: appointment.clientName,
       serviceName: appointment.service.name,
       startTime: appointment.startTime,
       timeZone: appointment.user.timezone || DEFAULT_TIMEZONE,
-    });
-    await sendBusinessAlert(appointment.user.phone, businessMessage, instance);
-  }
+    }),
+    appointment.clientPhone,
+  );
 }
 
 async function publishReminder(

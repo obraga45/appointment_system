@@ -16,6 +16,8 @@ import { secretsEqual } from "../lib/secrets";
 import { readSessionToken, signSessionToken } from "../lib/session-token";
 import { publicBookingSchema } from "../lib/validations";
 import { extractEvolutionInstance } from "../lib/whatsapp-cancel";
+import { extractEvolutionOwnerPhone } from "../lib/evolution";
+import { businessAlertSenderInstance } from "../lib/notifications";
 
 let failed = 0;
 let passed = 0;
@@ -78,6 +80,54 @@ function testWebhookParse() {
     extractEvolutionInstance({ instance: { instanceName: "barbearia-x" } }) === "barbearia-x",
   );
   assert("vazio se faltar", extractEvolutionInstance({ data: {} }) === "");
+}
+
+function testBusinessAlertRouting() {
+  console.log("\nAviso WhatsApp ao espaço");
+  assert(
+    "lê o número ligado ao QR",
+    extractEvolutionOwnerPhone(
+      { instanceName: "salao-x", ownerJid: "351920797741:12@s.whatsapp.net" },
+      "salao-x",
+    ) === "351920797741",
+  );
+  assert(
+    "ignora outra instância",
+    extractEvolutionOwnerPhone(
+      [
+        { instanceName: "outro", ownerJid: "351911111111@s.whatsapp.net" },
+        { instanceName: "salao-x", ownerJid: "351922222222@s.whatsapp.net" },
+      ],
+      "salao-x",
+    ) === "351922222222",
+  );
+  assert(
+    "aviso ao próprio QR usa a TemVagas",
+    businessAlertSenderInstance({
+      destinationPhone: "920797741",
+      businessInstance: "salao-x",
+      connectedPhone: "351920797741",
+      platformInstance: "marcaja",
+    }) === "marcaja",
+  );
+  assert(
+    "não envia do QR para o próprio número",
+    businessAlertSenderInstance({
+      destinationPhone: "351920797741",
+      businessInstance: "salao-x",
+      connectedPhone: "351920797741",
+      platformInstance: "salao-x",
+    }) === null,
+  );
+  assert(
+    "telemóvel diferente usa o WhatsApp do espaço",
+    businessAlertSenderInstance({
+      destinationPhone: "351925000000",
+      businessInstance: "salao-x",
+      connectedPhone: "351920797741",
+      platformInstance: "",
+    }) === "salao-x",
+  );
 }
 
 function testBookingSchema() {
@@ -190,6 +240,7 @@ async function main() {
   testTokens();
   testSecrets();
   testWebhookParse();
+  testBusinessAlertRouting();
   testBookingSchema();
   testAvailability();
   testSourceGuards();

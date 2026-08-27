@@ -141,8 +141,8 @@ export function SettingsForms({
         <CardHeader>
           <CardTitle>Perfil do negócio</CardTitle>
           <CardDescription>
-            Tentamos avisar este número por WhatsApp quando entra uma marcação nova. Se for o mesmo
-            telemóvel ligado ao QR, o aviso aparece nas conversas com os clientes.
+            Este número recebe um WhatsApp da TemVagas quando entra uma marcação nova — nome do
+            cliente, telemóvel, serviço e horário. Pode ser o mesmo telemóvel ligado ao QR.
           </CardDescription>
         </CardHeader>
         <CardContent>
