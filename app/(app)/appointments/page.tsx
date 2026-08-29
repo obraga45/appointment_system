@@ -43,6 +43,8 @@ export default async function AppointmentsPage() {
       endTime: true,
       status: true,
       notes: true,
+      depositRequired: true,
+      depositAmount: true,
       service: { select: { name: true, price: true } },
     },
     orderBy: { startTime: "asc" },
@@ -109,6 +111,8 @@ function AppointmentList({
     endTime: Date;
     status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
     notes: string | null;
+    depositRequired: boolean;
+    depositAmount: { toString(): string } | null;
     service: { name: string; price: { toString(): string } };
   }>;
   empty: string;
@@ -136,11 +140,21 @@ function AppointmentList({
                 {appointment.service.name} · {formatCurrency(appointment.service.price.toString())} ·{" "}
                 {formatPhoneDisplay(appointment.clientPhone)}
               </p>
+              {appointment.depositRequired && appointment.status === "PENDING" ? (
+                <p className="mt-1 text-sm text-amber-800">
+                  Sinal de {formatCurrency(appointment.depositAmount?.toString() ?? "0")} — confirme
+                  quando o valor entrar.
+                </p>
+              ) : null}
               {appointment.notes ? (
                 <p className="mt-1 text-sm text-muted-foreground">{appointment.notes}</p>
               ) : null}
             </div>
-            <StatusActions appointmentId={appointment.id} status={appointment.status} />
+            <StatusActions
+              appointmentId={appointment.id}
+              status={appointment.status}
+              depositRequired={appointment.depositRequired}
+            />
           </CardContent>
         </Card>
       ))}

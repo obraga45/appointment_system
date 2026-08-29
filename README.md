@@ -17,6 +17,8 @@ Preço: **15€/mês** ou **149€ no primeiro ano** (pagamento único inicial p
 
 A cobrança recorrente (Stripe) ainda não está no código: o 1.º período paga-se à mão.
 
+O espaço pode pedir um sinal (ex.: 5€) para confirmar marcações no link público. O cliente paga por MB Way ou IBAN **directo ao salão**; a TemVagas não processa esse dinheiro. O horário fica reservado 45 minutos até o profissional confirmar no painel.
+
 ## Arranque local
 
 ```bash
@@ -55,7 +57,7 @@ Webhook: `POST /api/webhooks/evolution` com o header `x-webhook-secret` (valor d
 | `/dashboard` | Agenda do dia + onboarding |
 | `/appointments` | Lista do dia/semana |
 | `/services` | Serviços |
-| `/settings` | Perfil, WhatsApp, link, horários |
+| `/settings` | Perfil, WhatsApp, sinal opcional, link, horários |
 | `/agendar/[slug]` | Página pública do cliente |
 | `/agendar/cancel/[token]` | Cancelamento pelo cliente |
 | `/termos`, `/privacidade` | Textos legais |

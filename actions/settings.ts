@@ -11,8 +11,14 @@ import { logSecurityEvent } from "@/lib/security-log";
 import { clearSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { calendarDateInZone, DEFAULT_TIMEZONE } from "@/lib/timezone";
-import { slugify } from "@/lib/utils";
-import { profileSchema, scheduleExceptionSchema, workingHoursSchema } from "@/lib/validations";
+import { normalizeIban } from "@/lib/deposit";
+import { normalizePhone, slugify } from "@/lib/utils";
+import {
+  depositSettingsSchema,
+  profileSchema,
+  scheduleExceptionSchema,
+  workingHoursSchema,
+} from "@/lib/validations";
 
 export async function updateProfile(rawInput: unknown): Promise<ActionResult> {
   const parsed = profileSchema.safeParse(rawInput);
@@ -44,6 +50,34 @@ export async function updateProfile(rawInput: unknown): Promise<ActionResult> {
   } catch (error) {
     console.error("[settings] updateProfile:", error);
     return fail("Não foi possível guardar o perfil");
+  }
+}
+
+export async function updateDepositSettings(rawInput: unknown): Promise<ActionResult> {
+  const parsed = depositSettingsSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return fail(zodErrorMessage(parsed.error));
+  }
+
+  try {
+    const user = await requireUser();
+    const mbWay = parsed.data.mbWay?.trim() ? normalizePhone(parsed.data.mbWay) : null;
+    const iban = parsed.data.iban?.trim() ? normalizeIban(parsed.data.iban) : null;
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        depositEnabled: parsed.data.enabled,
+        depositAmount: parsed.data.enabled ? parsed.data.amount : parsed.data.amount || null,
+        depositMbWay: mbWay,
+        depositIban: iban,
+      },
+    });
+
+    return ok(undefined);
+  } catch (error) {
+    console.error("[settings] updateDepositSettings:", error);
+    return fail("Não foi possível guardar o sinal");
   }
 }
 

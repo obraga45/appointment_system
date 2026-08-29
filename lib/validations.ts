@@ -173,6 +173,52 @@ export const profileSchema = z.object({
     .refine(isValidTimeZone, "Fuso horário inválido"),
 });
 
+export const depositSettingsSchema = z
+  .object({
+    enabled: z.boolean(),
+    amount: z.coerce.number().min(0, "Valor inválido").max(200, "O sinal máximo é 200€"),
+    mbWay: z.string().trim().optional().or(z.literal("")),
+    iban: z.string().trim().optional().or(z.literal("")),
+  })
+  .superRefine((value, ctx) => {
+    if (!value.enabled) {
+      return;
+    }
+    if (value.amount < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Indique o valor do sinal (mínimo 1€)",
+        path: ["amount"],
+      });
+    }
+    const mbWay = value.mbWay?.trim() ?? "";
+    const iban = (value.iban ?? "").replace(/\s+/g, "").toUpperCase();
+    if (!mbWay && !iban) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Indique o MB Way ou o IBAN do espaço",
+        path: ["mbWay"],
+      });
+    }
+    if (mbWay) {
+      const phone = phoneSchema.safeParse(mbWay);
+      if (!phone.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Indique um telemóvel MB Way válido",
+          path: ["mbWay"],
+        });
+      }
+    }
+    if (iban && !/^PT\d{23}$/.test(iban)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "IBAN português inválido",
+        path: ["iban"],
+      });
+    }
+  });
+
 export const availabilityQuerySchema = z.object({
   userId: z.string().uuid(),
   serviceId: z.string().uuid(),

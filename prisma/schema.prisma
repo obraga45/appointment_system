@@ -37,6 +37,10 @@ model User {
   timezone           String   @default("Europe/Lisbon")
   passwordHash       String?
   evolutionInstance  String?
+  depositEnabled     Boolean  @default(false)
+  depositAmount      Decimal? @db.Decimal(10, 2)
+  depositMbWay       String?
+  depositIban        String?
   createdAt          DateTime @default(now())
 
   services           Service[]
@@ -109,6 +113,9 @@ model Appointment {
   cancelTokenHash   String            @unique
   reminder24hJobId  String?
   reminder2hJobId   String?
+  depositRequired   Boolean           @default(false)
+  depositAmount     Decimal?          @db.Decimal(10, 2)
+  depositExpiresAt  DateTime?
   createdAt         DateTime          @default(now())
 
   notifications NotificationLog[]
@@ -117,6 +124,7 @@ model Appointment {
   @@index([serviceId])
   @@index([status, startTime])
   @@index([clientPhone, startTime])
+  @@index([status, depositExpiresAt])
 }
 
 model NotificationLog {

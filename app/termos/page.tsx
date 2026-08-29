@@ -23,6 +23,14 @@ export default function TermosPage() {
         actua como responsável pelo tratamento.
       </p>
       <p>
+        O Cliente pode pedir um sinal (valor fixo) para confirmar marcações feitas pelo link público.
+        Esse valor é pago pelo utente directamente ao estabelecimento (por exemplo MB Way ou
+        transferência). O {BRAND.name} não recebe, não transita e não reembolsa estes pagamentos. O
+        horário fica reservado durante um período limitado até o Cliente confirmar no painel; se o
+        sinal não for confirmado a tempo, a reserva caduca e o horário volta a ficar livre. A política
+        de cancelamento e de perda do sinal é definida pelo estabelecimento.
+      </p>
+      <p>
         As confirmações e lembretes são enviados pelo WhatsApp do próprio negócio. O Cliente
         reconhece que estas redes são de terceiros e que a entrega das mensagens não pode ser
         garantida a 100%.

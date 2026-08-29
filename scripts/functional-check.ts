@@ -14,7 +14,8 @@ import { createBookingChallenge, verifyBookingChallenge } from "../lib/booking-c
 import { hashToken, newCancelToken } from "../lib/reminders";
 import { secretsEqual } from "../lib/secrets";
 import { readSessionToken, signSessionToken } from "../lib/session-token";
-import { publicBookingSchema } from "../lib/validations";
+import { buildDepositRequestMessage, buildBusinessAlertMessage } from "../lib/notifications";
+import { depositSettingsSchema, publicBookingSchema } from "../lib/validations";
 import { extractEvolutionInstance } from "../lib/whatsapp-cancel";
 import { extractEvolutionOwnerPhone } from "../lib/evolution";
 import { businessAlertSenderInstance } from "../lib/notifications";
@@ -134,6 +135,54 @@ function testBusinessAlertRouting() {
   );
 }
 
+function testDeposit() {
+  console.log("\nSinal de confirmação");
+  assert(
+    "desligado sem dados é válido",
+    depositSettingsSchema.safeParse({ enabled: false, amount: 0, mbWay: "", iban: "" }).success,
+  );
+  assert(
+    "ligado sem pagamento falha",
+    depositSettingsSchema.safeParse({ enabled: true, amount: 5, mbWay: "", iban: "" }).success === false,
+  );
+  assert(
+    "ligado com MB Way é válido",
+    depositSettingsSchema.safeParse({ enabled: true, amount: 5, mbWay: "912345678", iban: "" }).success,
+  );
+  assert(
+    "IBAN PT válido",
+    depositSettingsSchema.safeParse({
+      enabled: true,
+      amount: 5,
+      mbWay: "",
+      iban: "PT50 0002 0123 1234 5678 9015 4",
+    }).success,
+  );
+  const message = buildDepositRequestMessage({
+    businessName: "Salão Oliveira",
+    clientName: "Ana",
+    serviceName: "Corte",
+    startTime: new Date("2026-09-01T09:00:00.000Z"),
+    amount: 5,
+    holdMinutes: 45,
+    mbWay: "351912345678",
+    timeZone: "Europe/Lisbon",
+  });
+  assert("pedido de sinal inclui o valor", message.includes("5,00") || message.includes("5.00"));
+  assert("pedido de sinal inclui MB Way", message.includes("912 345 678"));
+  const alert = buildBusinessAlertMessage({
+    businessName: "Salão Oliveira",
+    clientName: "Ana",
+    clientPhone: "351912345678",
+    serviceName: "Corte",
+    startTime: new Date("2026-09-01T09:00:00.000Z"),
+    depositAmount: 5,
+    depositHoldMinutes: 45,
+    timeZone: "Europe/Lisbon",
+  });
+  assert("aviso ao espaço menciona o sinal", alert.includes("sinal"));
+}
+
 function testBookingSchema() {
   console.log("\nValidação de marcação pública");
   const base = {
@@ -232,6 +281,8 @@ function testSourceGuards() {
     !appointments.includes("export async function cancelUpcomingByPhone("),
   );
   assert("grava cancelTokenHash", appointments.includes("cancelTokenHash"));
+  assert("marcações públicas podem pedir sinal", appointments.includes("applyDeposit"));
+  assert("marcações com sinal ficam PENDING", appointments.includes("depositRequired"));
   const webhook = readFileSync(new URL("../app/api/webhooks/evolution/route.ts", import.meta.url), "utf8");
   assert("webhook não aceita EVOLUTION_API_KEY", !webhook.includes("EVOLUTION_API_KEY"));
   assert("webhook usa secret dedicado", webhook.includes("evolutionWebhookSecret"));
@@ -248,6 +299,7 @@ async function main() {
   testSecrets();
   testWebhookParse();
   testBusinessAlertRouting();
+  testDeposit();
   testBookingSchema();
   testAvailability();
   testSourceGuards();

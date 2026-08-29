@@ -13,6 +13,10 @@ const userSelect = {
   slug: true,
   timezone: true,
   evolutionInstance: true,
+  depositEnabled: true,
+  depositAmount: true,
+  depositMbWay: true,
+  depositIban: true,
   createdAt: true,
 } as const;
 

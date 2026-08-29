@@ -42,6 +42,9 @@ async function main() {
       businessName: "Salão Oliveira",
       slug: "salao-oliveira",
       passwordHash: hashPassword("demo1234"),
+      depositEnabled: true,
+      depositAmount: 5,
+      depositMbWay: "351912345678",
       workingHours: { create: DEFAULT_HOURS },
       services: {
         create: [

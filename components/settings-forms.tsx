@@ -3,7 +3,8 @@
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { deleteAccount, updateProfile, updateWorkingHours } from "@/actions/settings";
+import { deleteAccount, updateDepositSettings, updateProfile, updateWorkingHours } from "@/actions/settings";
+import { DEPOSIT_HOLD_MINUTES } from "@/lib/deposit";
 import { CopyPublicLink } from "@/components/copy-public-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +41,7 @@ export function SettingsForms({
   profile,
   hours,
   publicUrl,
+  deposit,
 }: {
   profile: {
     name: string;
@@ -50,10 +52,21 @@ export function SettingsForms({
   };
   hours: HourRow[];
   publicUrl: string;
+  deposit: {
+    enabled: boolean;
+    amount: string;
+    mbWay: string;
+    iban: string;
+  };
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [hourRows, setHourRows] = useState(() => toHourRows(hours));
+  const [depositEnabled, setDepositEnabled] = useState(deposit.enabled);
+
+  useEffect(() => {
+    setDepositEnabled(deposit.enabled);
+  }, [deposit.enabled]);
 
   useEffect(() => {
     setHourRows(toHourRows(hours));
@@ -102,6 +115,25 @@ export function SettingsForms({
       ),
     );
     toast.success("Horário de segunda copiado para terça a sexta");
+  }
+
+  function onDeposit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    startTransition(async () => {
+      const result = await updateDepositSettings({
+        enabled: depositEnabled,
+        amount: Number(form.get("depositAmount") ?? 0),
+        mbWay: String(form.get("depositMbWay") ?? ""),
+        iban: String(form.get("depositIban") ?? ""),
+      });
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(depositEnabled ? "Sinal de confirmação guardado" : "Sinal desligado");
+      router.refresh();
+    });
   }
 
   function onHours(event: FormEvent<HTMLFormElement>) {
@@ -179,6 +211,71 @@ export function SettingsForms({
             </div>
             <Button type="submit" className="w-full sm:w-auto" disabled={pending}>
               Guardar perfil
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Sinal para confirmar</CardTitle>
+          <CardDescription>
+            Opcional. O cliente envia o valor por MB Way ou transferência para o teu espaço — o
+            dinheiro não passa pela TemVagas. O horário fica reservado {DEPOSIT_HOLD_MINUTES} minutos
+            até confirmares no painel. O sinal desconta-se no serviço.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={onDeposit} className="grid gap-4">
+            <label className="flex min-h-11 items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={depositEnabled}
+                onChange={(event) => setDepositEnabled(event.target.checked)}
+              />
+              <span>
+                <span className="font-medium">Pedir sinal para confirmar a marcação</span>
+                <span className="mt-1 block text-muted-foreground">
+                  Sem isto, as marcações no link ficam confirmadas na hora.
+                </span>
+              </span>
+            </label>
+            <div className="grid gap-2">
+              <Label htmlFor="depositAmount">Valor do sinal (€)</Label>
+              <Input
+                id="depositAmount"
+                name="depositAmount"
+                type="number"
+                min="1"
+                max="200"
+                step="0.50"
+                defaultValue={deposit.amount || "5"}
+                disabled={!depositEnabled}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="depositMbWay">MB Way do espaço</Label>
+              <Input
+                id="depositMbWay"
+                name="depositMbWay"
+                defaultValue={deposit.mbWay || profile.phone || ""}
+                placeholder="+351 9xx xxx xxx"
+                disabled={!depositEnabled}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="depositIban">IBAN (opcional)</Label>
+              <Input
+                id="depositIban"
+                name="depositIban"
+                defaultValue={deposit.iban}
+                placeholder="PT50 0000 0000 0000 0000 0000 0"
+                disabled={!depositEnabled}
+              />
+            </div>
+            <Button type="submit" className="w-full sm:w-auto" disabled={pending}>
+              Guardar sinal
             </Button>
           </form>
         </CardContent>

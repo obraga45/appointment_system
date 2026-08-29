@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { processReminderWindow, retryFailedReminders } from "@/lib/reminders";
+import { expireUnpaidDeposits } from "@/lib/deposit-expire";
+import { notifyDepositExpired, processReminderWindow, retryFailedReminders } from "@/lib/reminders";
 import { secretsEqual } from "@/lib/secrets";
 
 function isAuthorized(request: NextRequest): boolean {
@@ -14,6 +15,13 @@ function isAuthorized(request: NextRequest): boolean {
 }
 
 async function run() {
+  const expiredIds = await expireUnpaidDeposits();
+  for (const id of expiredIds) {
+    await notifyDepositExpired(id).catch((error) => {
+      console.error("[cron/reminders] Aviso de sinal expirado falhou:", error);
+    });
+  }
+
   const [reminder24h, reminder2h, retried] = await Promise.all([
     processReminderWindow(24),
     processReminderWindow(2),
@@ -23,6 +31,7 @@ async function run() {
   return {
     ok: true,
     ranAt: new Date().toISOString(),
+    expiredDeposits: expiredIds.length,
     reminder24h,
     reminder2h,
     retried,

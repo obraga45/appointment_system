@@ -1,8 +1,9 @@
 import { formatInTimeZone } from "date-fns-tz";
 import { pt } from "date-fns/locale";
 import { readEnv } from "@/lib/config";
+import { formatIbanDisplay } from "@/lib/deposit";
 import { DEFAULT_TIMEZONE } from "@/lib/timezone";
-import { formatPhoneDisplay, normalizePhone } from "@/lib/utils";
+import { formatCurrency, formatPhoneDisplay, normalizePhone } from "@/lib/utils";
 
 export type MessageProvider = "evolution" | "zapi";
 
@@ -184,6 +185,49 @@ export function buildConfirmationMessage(input: {
   return lines.join("\n");
 }
 
+export function buildDepositRequestMessage(input: {
+  businessName: string;
+  clientName: string;
+  serviceName: string;
+  startTime: Date;
+  amount: number;
+  holdMinutes: number;
+  mbWay?: string | null;
+  iban?: string | null;
+  timeZone?: string;
+  cancelUrl?: string;
+}): string {
+  const when = whenLabel(input.startTime, input.timeZone ?? DEFAULT_TIMEZONE);
+  const amount = formatCurrency(input.amount);
+  const lines = [
+    `Olá ${input.clientName},`,
+    `o horário em ${input.businessName} ficou reservado por ${input.holdMinutes} minutos.`,
+    `Serviço: ${input.serviceName}`,
+    `Quando: ${when}`,
+    `Sinal: ${amount} (desconta-se no serviço)`,
+    "",
+    `Para confirmar, envie ${amount} para o espaço:`,
+  ];
+  if (input.mbWay) {
+    lines.push(`MB Way: ${formatPhoneDisplay(normalizePhone(input.mbWay))}`);
+  }
+  if (input.iban) {
+    lines.push(`IBAN: ${formatIbanDisplay(input.iban)}`);
+  }
+  lines.push("Quando o valor entrar, o espaço confirma a marcação.");
+  if (input.cancelUrl) {
+    lines.push(`Para cancelar: ${input.cancelUrl}`);
+  }
+  return lines.join("\n");
+}
+
+export function buildDepositExpiredMessage(input: {
+  businessName: string;
+  clientName: string;
+}): string {
+  return `Olá ${input.clientName}, o horário em ${input.businessName} não foi confirmado a tempo e ficou livre outra vez.`;
+}
+
 export function buildReminderMessage(input: {
   businessName: string;
   clientName: string;
@@ -224,15 +268,28 @@ export function buildBusinessAlertMessage(input: {
   serviceName: string;
   startTime: Date;
   timeZone?: string;
+  depositAmount?: number | null;
+  depositHoldMinutes?: number;
 }): string {
   const when = whenLabel(input.startTime, input.timeZone ?? DEFAULT_TIMEZONE);
-  return [
-    `Nova marcação em ${input.businessName}`,
+  const heading =
+    input.depositAmount && input.depositAmount > 0
+      ? `Nova marcação à espera de sinal (${formatCurrency(input.depositAmount)}) em ${input.businessName}`
+      : `Nova marcação em ${input.businessName}`;
+  const lines = [
+    heading,
     `Cliente: ${input.clientName}`,
     `Telemóvel: ${formatPhoneDisplay(input.clientPhone)}`,
     `Serviço: ${input.serviceName}`,
     `Quando: ${when}`,
-  ].join("\n");
+  ];
+  if (input.depositAmount && input.depositAmount > 0) {
+    const hold = input.depositHoldMinutes ?? 45;
+    lines.push(
+      `Quando receber o sinal, confirme no painel. O horário fica reservado ${hold} minutos.`,
+    );
+  }
+  return lines.join("\n");
 }
 
 export function buildBusinessCancelMessage(input: {

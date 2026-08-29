@@ -19,7 +19,13 @@ import {
   type DayAvailability,
   type TimeSlot,
 } from "@/lib/availability";
-import { cn, formatCurrency } from "@/lib/utils";
+import {
+  DEPOSIT_HOLD_MINUTES,
+  formatDepositPayLines,
+  formatIbanDisplay,
+  type DepositSettings,
+} from "@/lib/deposit";
+import { cn, formatCurrency, formatPhoneDisplay, normalizePhone } from "@/lib/utils";
 
 type ServiceOption = {
   id: string;
@@ -37,12 +43,14 @@ export function BookingWizard({
   businessName,
   services,
   challenge,
+  deposit,
 }: {
   businessSlug: string;
   userId: string;
   businessName: string;
   services: ServiceOption[];
   challenge: string;
+  deposit: DepositSettings | null;
 }) {
   const [step, setStep] = useState<Step>("service");
   const [serviceId, setServiceId] = useState("");
@@ -184,13 +192,19 @@ export function BookingWizard({
     return (
       <Card>
         <CardContent className="space-y-3 py-10 text-center">
-          <p className="font-serif text-2xl">Marcação confirmada</p>
+          <p className="font-serif text-2xl">
+            {deposit ? "Horário reservado" : "Marcação confirmada"}
+          </p>
           <p className="text-muted-foreground">
             {service.name} em {format(combineDateAndTime(date, time), "d 'de' MMMM 'às' HH:mm", { locale: pt })}.
           </p>
-          <p className="text-sm text-muted-foreground">
-            Enviámos uma confirmação por WhatsApp, se o envio de mensagens estiver ativo.
-          </p>
+          {deposit ? (
+            <DepositInstructions deposit={deposit} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Enviámos uma confirmação por WhatsApp, se o envio de mensagens estiver ativo.
+            </p>
+          )}
         </CardContent>
       </Card>
     );
@@ -370,6 +384,7 @@ export function BookingWizard({
             <p className="text-sm text-muted-foreground">
               {service?.name} · {format(combineDateAndTime(date, time), "EEEE, d MMM 'às' HH:mm", { locale: pt })}
             </p>
+            {deposit ? <DepositInstructions deposit={deposit} compact /> : null}
             <div className="grid gap-2">
               <Label htmlFor="clientName">Nome</Label>
               <Input id="clientName" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
@@ -408,7 +423,13 @@ export function BookingWizard({
                 Voltar
               </Button>
               <Button className="w-full sm:w-auto" onClick={confirm} disabled={pending || !clientName || !clientPhone}>
-                {pending ? "A confirmar…" : `Confirmar em ${businessName}`}
+                {pending
+                  ? deposit
+                    ? "A reservar…"
+                    : "A confirmar…"
+                  : deposit
+                    ? `Reservar em ${businessName}`
+                    : `Confirmar em ${businessName}`}
               </Button>
             </div>
           </CardContent>
@@ -498,6 +519,49 @@ function SlotsSkeleton() {
       {Array.from({ length: 9 }, (_, index) => (
         <div key={index} className="h-11 animate-pulse rounded-lg bg-muted" />
       ))}
+    </div>
+  );
+}
+
+function DepositInstructions({
+  deposit,
+  compact = false,
+}: {
+  deposit: DepositSettings;
+  compact?: boolean;
+}) {
+  const amount = formatCurrency(deposit.amount ?? 0);
+  const lines = formatDepositPayLines(deposit);
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border bg-secondary/50 p-4 text-left text-sm",
+        compact && "bg-secondary/40",
+      )}
+    >
+      <p className="font-medium">
+        Sinal de {amount} para confirmar
+      </p>
+      <p className="mt-1 text-muted-foreground">
+        Envie {amount} para este espaço. O valor desconta-se no serviço. O horário fica reservado{" "}
+        {DEPOSIT_HOLD_MINUTES} minutos até o espaço confirmar.
+      </p>
+      <ul className="mt-2 space-y-1 font-medium">
+        {deposit.mbWay ? (
+          <li>MB Way: {formatPhoneDisplay(normalizePhone(deposit.mbWay))}</li>
+        ) : null}
+        {deposit.iban ? <li>IBAN: {formatIbanDisplay(deposit.iban)}</li> : null}
+      </ul>
+      {lines.length === 0 ? null : compact ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Depois de enviar, o espaço confirma no painel.
+        </p>
+      ) : (
+        <p className="mt-2 text-muted-foreground">
+          Enviámos estas instruções por WhatsApp, se o envio de mensagens estiver ativo.
+        </p>
+      )}
     </div>
   );
 }

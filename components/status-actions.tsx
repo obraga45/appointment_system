@@ -12,9 +12,11 @@ import type { AppointmentStatus } from "@prisma/client";
 export function StatusActions({
   appointmentId,
   status,
+  depositRequired = false,
 }: {
   appointmentId: string;
   status: AppointmentStatus;
+  depositRequired?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -33,12 +35,14 @@ export function StatusActions({
 
   return (
     <div className="flex w-full flex-wrap items-center gap-2">
-      <Badge variant={STATUS_VARIANT[status]}>{STATUS_LABELS[status]}</Badge>
+      <Badge variant={STATUS_VARIANT[status]}>
+        {status === "PENDING" && depositRequired ? "À espera do sinal" : STATUS_LABELS[status]}
+      </Badge>
       {status !== "CANCELLED" && status !== "COMPLETED" ? (
         <>
           {status === "PENDING" ? (
             <Button size="sm" variant="outline" disabled={pending} onClick={() => change("CONFIRMED")}>
-              Confirmar
+              {depositRequired ? "Recebi o sinal" : "Confirmar"}
             </Button>
           ) : null}
           <Button size="sm" variant="outline" disabled={pending} onClick={() => change("COMPLETED")}>

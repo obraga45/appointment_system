@@ -14,8 +14,8 @@ export default function PrivacidadePage() {
       </p>
       <p>
         <strong className="text-foreground">Contas de profissionais:</strong> nome, email, telemóvel,
-        nome do negócio, fuso horário e palavra-passe (armazenada de forma irreversível). Base legal:
-        execução do contrato.
+        nome do negócio, fuso horário, dados opcionais de sinal (valor, MB Way, IBAN) e palavra-passe
+        (armazenada de forma irreversível). Base legal: execução do contrato.
       </p>
       <p>
         <strong className="text-foreground">Dados dos utentes:</strong> recolhidos pelo estabelecimento

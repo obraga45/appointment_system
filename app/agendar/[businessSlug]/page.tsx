@@ -4,7 +4,9 @@ import { BookingWizard } from "@/components/booking-wizard";
 import { SiteFooter } from "@/components/site-footer";
 import { BRAND } from "@/lib/brand";
 import { createBookingChallenge } from "@/lib/booking-challenge";
+import { businessAcceptsDeposit, depositFromUser } from "@/lib/deposit";
 import { prisma } from "@/lib/prisma";
+import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,10 @@ const getPublicBusiness = cache(async (businessSlug: string) => {
       id: true,
       slug: true,
       businessName: true,
+      depositEnabled: true,
+      depositAmount: true,
+      depositMbWay: true,
+      depositIban: true,
       services: {
         where: { isActive: true },
         orderBy: { name: "asc" },
@@ -52,6 +58,8 @@ export default async function PublicBookingPage({ params }: PageProps) {
   }
 
   const challenge = await createBookingChallenge();
+  const deposit = depositFromUser(business);
+  const asksDeposit = businessAcceptsDeposit(deposit);
 
   return (
     <div className="flex min-h-screen flex-col bg-[radial-gradient(circle_at_top,oklch(0.93_0.04_85),transparent_45%)]">
@@ -59,8 +67,9 @@ export default async function PublicBookingPage({ params }: PageProps) {
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary sm:text-sm">{BRAND.name}</p>
         <h1 className="mt-2 font-serif text-3xl font-semibold sm:text-4xl">{business.businessName}</h1>
         <p className="mt-2 text-muted-foreground">
-          Veja os dias já ocupados, escolha um horário livre e deixe um número com WhatsApp. Recebe
-          confirmação automática.
+          {asksDeposit
+            ? `Veja os dias já ocupados, escolha um horário livre e envie o sinal de ${formatCurrency(deposit.amount ?? 0)} para confirmar. O dinheiro vai directo a este espaço.`
+            : "Veja os dias já ocupados, escolha um horário livre e deixe um número com WhatsApp. Recebe confirmação automática."}
         </p>
         <div className="mt-8">
           <BookingWizard
@@ -68,6 +77,7 @@ export default async function PublicBookingPage({ params }: PageProps) {
             userId={business.id}
             businessName={business.businessName}
             challenge={challenge}
+            deposit={asksDeposit ? deposit : null}
             services={business.services.map((service) => ({
               id: service.id,
               name: service.name,

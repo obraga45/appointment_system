@@ -17,6 +17,12 @@ import {
   type TimeSlot,
 } from "@/lib/availability";
 import { verifyBookingChallenge } from "@/lib/booking-challenge";
+import {
+  businessAcceptsDeposit,
+  DEPOSIT_HOLD_MINUTES,
+  depositFromUser,
+} from "@/lib/deposit";
+import { expireUnpaidDeposits } from "@/lib/deposit-expire";
 import { withBusinessLock } from "@/lib/lock";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import {
@@ -25,8 +31,10 @@ import {
   newCancelToken,
   notifyAppointmentCancelled,
   notifyBusinessOfBooking,
+  notifyDepositExpired,
   scheduleAppointmentReminders,
   sendAppointmentConfirmation,
+  sendDepositRequest,
 } from "@/lib/reminders";
 import {
   calendarDateInZone,
@@ -46,6 +54,27 @@ import {
 } from "@/lib/validations";
 
 const PUBLIC_BOOKINGS_PER_PHONE = 8;
+
+export type BookingCreated = {
+  id: string;
+  awaitingDeposit: boolean;
+};
+
+async function releaseExpiredDeposits(userId?: string) {
+  const ids = await expireUnpaidDeposits(userId ? { userId } : undefined);
+  if (ids.length === 0) {
+    return;
+  }
+  after(() =>
+    Promise.all(
+      ids.map((id) =>
+        notifyDepositExpired(id).catch((error) => {
+          console.error("[appointments] Aviso de sinal expirado falhou:", error);
+        }),
+      ),
+    ),
+  );
+}
 
 async function assertSlotIsFree(
   tx: { appointment: { findFirst: typeof prisma.appointment.findFirst } },
@@ -81,7 +110,8 @@ async function createAppointmentRecord(input: {
   date: string;
   time: string;
   enforcePhoneLimit?: boolean;
-}) {
+  applyDeposit?: boolean;
+}): Promise<ActionResult<BookingCreated>> {
   const service = await prisma.service.findFirst({
     where: { id: input.serviceId, userId: input.userId, isActive: true },
     select: { id: true, durationMinutes: true },
@@ -99,6 +129,21 @@ async function createAppointmentRecord(input: {
   const endTime = addMinutes(startTime, service.durationMinutes);
   const phone = normalizePhone(input.clientPhone);
   const cancelToken = newCancelToken();
+  await releaseExpiredDeposits(input.userId);
+
+  const ownerDeposit = input.applyDeposit
+    ? await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: {
+          depositEnabled: true,
+          depositAmount: true,
+          depositMbWay: true,
+          depositIban: true,
+        },
+      })
+    : null;
+  const deposit = ownerDeposit ? depositFromUser(ownerDeposit) : null;
+  const requireDeposit = Boolean(deposit && businessAcceptsDeposit(deposit));
 
   try {
     const appointment = await withBusinessLock(input.userId, async (tx) => {
@@ -170,9 +215,12 @@ async function createAppointmentRecord(input: {
           clientEmail: input.clientEmail || null,
           startTime,
           endTime,
-          status: AppointmentStatus.CONFIRMED,
+          status: requireDeposit ? AppointmentStatus.PENDING : AppointmentStatus.CONFIRMED,
           notes: input.notes || null,
           cancelTokenHash: hashToken(cancelToken),
+          depositRequired: requireDeposit,
+          depositAmount: requireDeposit ? deposit?.amount ?? null : null,
+          depositExpiresAt: requireDeposit ? addMinutes(new Date(), DEPOSIT_HOLD_MINUTES) : null,
         },
       });
     });
@@ -181,6 +229,12 @@ async function createAppointmentRecord(input: {
       await notifyBusinessOfBooking(appointment.id).catch((error) => {
         console.error("[appointments] Aviso ao negócio falhou:", error);
       });
+      if (requireDeposit) {
+        await sendDepositRequest(appointment.id, cancelToken).catch((error) => {
+          console.error("[appointments] Pedido de sinal falhou:", error);
+        });
+        return;
+      }
       await sendAppointmentConfirmation(appointment.id, cancelToken).catch((error) => {
         console.error("[appointments] Confirmação falhou:", error);
       });
@@ -189,7 +243,7 @@ async function createAppointmentRecord(input: {
       });
     });
 
-    return ok({ id: appointment.id });
+    return ok({ id: appointment.id, awaitingDeposit: requireDeposit });
   } catch (error) {
     if (error instanceof Error && error.message === "SLOT_TAKEN") {
       return fail("Esse horário já está ocupado");
@@ -213,7 +267,7 @@ async function createAppointmentRecord(input: {
 
 export async function createAppointment(
   rawInput: unknown,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<BookingCreated>> {
   const parsed = createAppointmentSchema.safeParse(rawInput);
   if (!parsed.success) {
     return fail(zodErrorMessage(parsed.error));
@@ -248,14 +302,14 @@ export async function createAppointment(
 export async function createPublicAppointment(
   businessSlug: string,
   rawInput: unknown,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<BookingCreated>> {
   const parsed = publicBookingSchema.safeParse(rawInput);
   if (!parsed.success) {
     return fail(zodErrorMessage(parsed.error));
   }
 
   if (parsed.data.companyWebsite) {
-    return ok({ id: "ok" });
+    return ok({ id: "ok", awaitingDeposit: false });
   }
 
   if (!(await verifyBookingChallenge(parsed.data.challenge))) {
@@ -294,6 +348,7 @@ export async function createPublicAppointment(
       date: input.date,
       time: input.time,
       enforcePhoneLimit: true,
+      applyDeposit: true,
     });
   } catch (error) {
     console.error("[appointments] createPublicAppointment:", error);
@@ -357,17 +412,47 @@ export async function updateAppointmentStatus(
     const user = await requireUser();
     const current = await prisma.appointment.findFirst({
       where: { id: parsed.data.appointmentId, userId: user.id },
-      select: { id: true, status: true },
+      select: { id: true, status: true, depositRequired: true, depositExpiresAt: true },
     });
 
     if (!current) {
       return fail("Marcação não encontrada");
     }
 
+    if (
+      parsed.data.status === AppointmentStatus.CONFIRMED &&
+      current.status === AppointmentStatus.PENDING &&
+      current.depositRequired &&
+      current.depositExpiresAt &&
+      current.depositExpiresAt.getTime() <= Date.now()
+    ) {
+      await releaseExpiredDeposits(user.id);
+      return fail("O prazo do sinal já passou e o horário ficou livre");
+    }
+
     await prisma.appointment.update({
       where: { id: current.id },
-      data: { status: parsed.data.status },
+      data: {
+        status: parsed.data.status,
+        ...(parsed.data.status === AppointmentStatus.CONFIRMED
+          ? { depositExpiresAt: null }
+          : {}),
+      },
     });
+
+    if (
+      parsed.data.status === AppointmentStatus.CONFIRMED &&
+      current.status === AppointmentStatus.PENDING
+    ) {
+      after(async () => {
+        await sendAppointmentConfirmation(current.id).catch((error) => {
+          console.error("[appointments] Confirmação após sinal falhou:", error);
+        });
+        await scheduleAppointmentReminders(current.id).catch((error) => {
+          console.error("[appointments] Lembretes após sinal falharam:", error);
+        });
+      });
+    }
 
     if (parsed.data.status === AppointmentStatus.CANCELLED) {
       await cancelScheduledReminders(current.id);
@@ -464,6 +549,8 @@ async function loadSlotContext(userId: string, serviceId: string, date: string) 
   if (!service || !owner) {
     return null;
   }
+
+  await releaseExpiredDeposits(userId);
 
   const weekday = calendarWeekday(date);
   const [workingHour, existing, exceptions] = await Promise.all([
@@ -604,6 +691,8 @@ export async function getAvailabilityOverview(
     if (!service || !owner) {
       return fail("Serviço não encontrado");
     }
+
+    await releaseExpiredDeposits(userId);
 
     const from = zonedDayStart(calendarDateInZone(new Date(), timeZone), timeZone);
     const to = zonedDayEnd(

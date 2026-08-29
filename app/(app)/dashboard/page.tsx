@@ -5,6 +5,7 @@ import { pt } from "date-fns/locale";
 import { CalendarPlus } from "lucide-react";
 import { CopyPublicLink } from "@/components/copy-public-link";
 import { CardLoading } from "@/components/page-loading";
+import { StatusActions } from "@/components/status-actions";
 import { WhatsAppStatusBlock } from "@/components/whatsapp-status-block";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ export default async function DashboardPage() {
   const to = endOfZonedDay(today, tz);
   const publicUrl = publicBookingUrl(user.slug);
 
-  const [appointments, services, upcoming, failedReminder] = await Promise.all([
+  const [appointments, pendingDeposits, services, upcoming, failedReminder] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         userId: user.id,
@@ -36,9 +37,28 @@ export default async function DashboardPage() {
         startTime: true,
         endTime: true,
         status: true,
+        depositRequired: true,
+        depositAmount: true,
         service: { select: { name: true, price: true } },
       },
       orderBy: { startTime: "asc" },
+    }),
+    prisma.appointment.findMany({
+      where: {
+        userId: user.id,
+        status: "PENDING",
+        depositRequired: true,
+        startTime: { gte: today },
+      },
+      select: {
+        id: true,
+        clientName: true,
+        startTime: true,
+        depositAmount: true,
+        service: { select: { name: true } },
+      },
+      orderBy: { startTime: "asc" },
+      take: 8,
     }),
     prisma.service.count({ where: { userId: user.id, isActive: true } }),
     prisma.appointment.count({
@@ -89,6 +109,38 @@ export default async function DashboardPage() {
           showOnboarding
         />
       </Suspense>
+
+      {pendingDeposits.length > 0 ? (
+        <section className="space-y-3">
+          <h2 className="font-serif text-lg sm:text-xl">À espera do sinal</h2>
+          <div className="space-y-2">
+            {pendingDeposits.map((appointment) => (
+              <Card key={appointment.id} className="border-amber-300/80">
+                <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium">
+                      {appointment.clientName} · {appointment.service.name}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatInTimeZone(appointment.startTime, tz, "EEEE, d MMM 'às' HH:mm", {
+                        locale: pt,
+                      })}
+                      {appointment.depositAmount
+                        ? ` · sinal ${formatCurrency(appointment.depositAmount.toString())}`
+                        : null}
+                    </p>
+                  </div>
+                  <StatusActions
+                    appointmentId={appointment.id}
+                    status="PENDING"
+                    depositRequired
+                  />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {failedReminder ? (
         <Card className="border-destructive/40">
@@ -165,9 +217,17 @@ export default async function DashboardPage() {
                       {appointment.service.name} · {formatCurrency(appointment.service.price.toString())}
                     </p>
                   </div>
-                  <Badge variant={STATUS_VARIANT[appointment.status]}>
-                    {STATUS_LABELS[appointment.status]}
-                  </Badge>
+                  {appointment.status === "PENDING" && appointment.depositRequired ? (
+                    <StatusActions
+                      appointmentId={appointment.id}
+                      status={appointment.status}
+                      depositRequired
+                    />
+                  ) : (
+                    <Badge variant={STATUS_VARIANT[appointment.status]}>
+                      {STATUS_LABELS[appointment.status]}
+                    </Badge>
+                  )}
                 </CardContent>
               </Card>
             ))}

@@ -28,7 +28,9 @@ export default async function SettingsPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="font-serif text-2xl font-semibold sm:text-3xl">Definições</h1>
-        <p className="text-sm text-muted-foreground">Perfil, WhatsApp, link público e horário de funcionamento.</p>
+        <p className="text-sm text-muted-foreground">
+          Perfil, WhatsApp, sinal de confirmação, link público e horário de funcionamento.
+        </p>
       </div>
       <Suspense fallback={<CardLoading />}>
         <WhatsAppStatusBlock slug={user.slug} instance={user.evolutionInstance} />
@@ -41,6 +43,12 @@ export default async function SettingsPage() {
           phone: user.phone,
           timezone: user.timezone,
           slug: user.slug,
+        }}
+        deposit={{
+          enabled: user.depositEnabled,
+          amount: user.depositAmount?.toString() ?? "",
+          mbWay: user.depositMbWay ?? "",
+          iban: user.depositIban ?? "",
         }}
         hours={hours}
       />

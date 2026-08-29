@@ -13,12 +13,15 @@ import {
   buildBusinessCancelMessage,
   buildCancelConfirmationMessage,
   buildConfirmationMessage,
+  buildDepositExpiredMessage,
+  buildDepositRequestMessage,
   buildReminderMessage,
   businessAlertSenderInstance,
   sendBusinessAlert,
   sendOutboundMessage,
 } from "@/lib/notifications";
 import { getEvolutionOwnerNumber } from "@/lib/evolution";
+import { DEPOSIT_HOLD_MINUTES } from "@/lib/deposit";
 import { DEFAULT_TIMEZONE } from "@/lib/timezone";
 import { normalizePhone } from "@/lib/utils";
 
@@ -105,6 +108,36 @@ export async function sendAppointmentConfirmation(
   return { skipped: false as const, ok: result.ok, error: result.error };
 }
 
+export async function sendDepositRequest(appointmentId: string, cancelToken?: string) {
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    include: { user: true, service: true },
+  });
+  if (!appointment || !appointment.depositRequired || appointment.depositAmount == null) {
+    return { skipped: true as const };
+  }
+
+  const message = buildDepositRequestMessage({
+    businessName: appointment.user.businessName,
+    clientName: appointment.clientName,
+    serviceName: appointment.service.name,
+    startTime: appointment.startTime,
+    amount: Number(appointment.depositAmount.toString()),
+    holdMinutes: DEPOSIT_HOLD_MINUTES,
+    mbWay: appointment.user.depositMbWay,
+    iban: appointment.user.depositIban,
+    timeZone: appointment.user.timezone || DEFAULT_TIMEZONE,
+    cancelUrl: cancelToken ? cancelUrl(cancelToken) : undefined,
+  });
+
+  const result = await sendOutboundMessage(
+    appointment.clientPhone,
+    message,
+    appointment.user.evolutionInstance,
+  );
+  return { skipped: false as const, ok: result.ok, error: result.error };
+}
+
 export async function notifyBusinessOfBooking(appointmentId: string) {
   if (await alreadySent(appointmentId, NotificationType.BUSINESS_ALERT)) {
     return { skipped: true as const };
@@ -127,6 +160,10 @@ export async function notifyBusinessOfBooking(appointmentId: string) {
       serviceName: appointment.service.name,
       startTime: appointment.startTime,
       timeZone: appointment.user.timezone || DEFAULT_TIMEZONE,
+      depositAmount: appointment.depositRequired
+        ? Number(appointment.depositAmount?.toString() ?? 0)
+        : null,
+      depositHoldMinutes: appointment.depositRequired ? DEPOSIT_HOLD_MINUTES : undefined,
     }),
     appointment.clientPhone,
   );
@@ -193,8 +230,7 @@ export async function sendAppointmentReminder(
 
   if (
     !appointment ||
-    appointment.status === AppointmentStatus.CANCELLED ||
-    appointment.status === AppointmentStatus.COMPLETED
+    appointment.status !== AppointmentStatus.CONFIRMED
   ) {
     return { skipped: true as const };
   }
@@ -217,6 +253,36 @@ export async function sendAppointmentReminder(
   );
   await logNotification(appointmentId, type, result);
   return { skipped: false as const, ok: result.ok, error: result.error };
+}
+
+export async function notifyDepositExpired(appointmentId: string) {
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    include: { user: true, service: true },
+  });
+  if (!appointment) {
+    return;
+  }
+
+  const instance = appointment.user.evolutionInstance;
+  await sendOutboundMessage(
+    appointment.clientPhone,
+    buildDepositExpiredMessage({
+      businessName: appointment.user.businessName,
+      clientName: appointment.clientName,
+    }),
+    instance,
+  );
+
+  await sendBusinessWhatsApp(
+    appointment.user,
+    [
+      `Marcação sem sinal libertada em ${appointment.user.businessName}`,
+      `Cliente: ${appointment.clientName}`,
+      `Serviço: ${appointment.service.name}`,
+    ].join("\n"),
+    appointment.clientPhone,
+  );
 }
 
 export async function notifyAppointmentCancelled(appointmentId: string) {
@@ -355,7 +421,7 @@ export async function processReminderWindow(hoursAhead: 24 | 2) {
 
   const appointments = await prisma.appointment.findMany({
     where: {
-      status: { in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED] },
+      status: AppointmentStatus.CONFIRMED,
       startTime: { gte: from, lte: until },
       notifications: { none: { type, status: NotificationStatus.SENT } },
     },
@@ -384,7 +450,7 @@ export async function retryFailedReminders() {
       type: { in: [NotificationType.REMINDER_24H, NotificationType.REMINDER_2H] },
       sentAt: { gte: from },
       appointment: {
-        status: { in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED] },
+        status: AppointmentStatus.CONFIRMED,
         startTime: { gte: new Date() },
       },
     },
