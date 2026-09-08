@@ -5,12 +5,14 @@ import { evolutionInstanceName, getEvolutionState, isEvolutionApiReady } from "@
 export async function WhatsAppStatusBlock({
   slug,
   instance,
+  defaultPhone,
   hasServices,
   publicUrl,
   showOnboarding = false,
 }: {
   slug: string;
   instance: string | null;
+  defaultPhone?: string | null;
   hasServices?: boolean;
   publicUrl?: string;
   showOnboarding?: boolean;
@@ -31,11 +33,13 @@ export async function WhatsAppStatusBlock({
         />
       ) : null}
       <WhatsAppConnectCard
+        defaultPhone={defaultPhone ?? ""}
         initial={{
           configured,
           connected,
           state,
           qr: null,
+          pairingCode: null,
         }}
       />
     </>

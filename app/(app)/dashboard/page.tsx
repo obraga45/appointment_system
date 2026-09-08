@@ -104,6 +104,7 @@ export default async function DashboardPage() {
         <WhatsAppStatusBlock
           slug={user.slug}
           instance={user.evolutionInstance}
+          defaultPhone={user.phone}
           hasServices={services > 0}
           publicUrl={publicUrl}
           showOnboarding

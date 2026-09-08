@@ -45,7 +45,7 @@ Links antigos `/book/...` redireccionam para `/agendar/...`.
 
 ### WhatsApp + lembretes
 
-Ver `deploy/evolution`. Cada negócio liga o próprio WhatsApp (QR). Confirmações e lembretes saem no WhatsApp do negócio; o cliente deixa um número com WhatsApp. O telemóvel do negócio pode receber aviso de marcações novas. Variáveis na Vercel: `MESSAGE_PROVIDER`, `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_WEBHOOK_SECRET`, e opcionalmente QStash / Resend (`EMAIL_FROM=TemVagas <info@temvagas.pt>`).
+Ver `deploy/evolution`. Cada negócio liga o próprio WhatsApp: no telemóvel com um código de 8 caracteres, ou com QR se tiver outro ecrã. Confirmações e lembretes saem no WhatsApp do negócio; o cliente deixa um número com WhatsApp. O telemóvel do negócio pode receber aviso de marcações novas. Variáveis na Vercel: `MESSAGE_PROVIDER`, `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_WEBHOOK_SECRET`, e opcionalmente QStash / Resend (`EMAIL_FROM=TemVagas <info@temvagas.pt>`).
 
 Webhook: `POST /api/webhooks/evolution` com o header `x-webhook-secret` (valor de `EVOLUTION_WEBHOOK_SECRET`, não o `CRON_SECRET`). Mensagens com «cancelar» desmarcam a próxima visita desse número.
 

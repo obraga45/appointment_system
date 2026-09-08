@@ -33,7 +33,11 @@ export default async function SettingsPage() {
         </p>
       </div>
       <Suspense fallback={<CardLoading />}>
-        <WhatsAppStatusBlock slug={user.slug} instance={user.evolutionInstance} />
+        <WhatsAppStatusBlock
+          slug={user.slug}
+          instance={user.evolutionInstance}
+          defaultPhone={user.phone}
+        />
       </Suspense>
       <SettingsForms
         publicUrl={publicBookingUrl(user.slug)}

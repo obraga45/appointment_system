@@ -38,7 +38,7 @@ export function OnboardingCard({
             variant={hasServices ? "default" : "outline"}
             className="h-auto w-full justify-start whitespace-normal py-3 text-left"
           >
-            <Link href="#whatsapp">Ligar o WhatsApp do negócio</Link>
+            <Link href="#whatsapp">Ligar o WhatsApp — neste telemóvel, com um código</Link>
           </Button>
         )}
       </CardContent>

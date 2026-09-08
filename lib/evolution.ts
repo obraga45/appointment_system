@@ -7,6 +7,7 @@ export type EvolutionConnection = {
   configured: boolean;
   state: EvolutionState;
   qr: string | null;
+  pairingCode: string | null;
 };
 
 export function isEvolutionApiReady(): boolean {
@@ -75,6 +76,30 @@ export function extractQrBase64(payload: unknown): string | null {
   }
 
   return raw.startsWith("data:") ? raw : `data:image/png;base64,${raw}`;
+}
+
+export function extractPairingCode(payload: unknown): string | null {
+  const root = asRecord(payload);
+  const qrcode = asRecord(root.qrcode);
+  const candidates = [root.pairingCode, qrcode.pairingCode];
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string") {
+      continue;
+    }
+    const compact = candidate.replace(/[\s-]/g, "").toUpperCase();
+    if (compact.length >= 6 && compact.length <= 12) {
+      return compact;
+    }
+  }
+  return null;
+}
+
+export function formatPairingCode(code: string): string {
+  const compact = code.replace(/[\s-]/g, "").toUpperCase();
+  if (compact.length === 8) {
+    return `${compact.slice(0, 4)}-${compact.slice(4)}`;
+  }
+  return compact;
 }
 
 export function parseEvolutionState(payload: unknown): EvolutionState {
@@ -181,6 +206,26 @@ export async function fetchEvolutionQr(instance: string): Promise<string | null>
   return extractQrBase64(result.json);
 }
 
+export async function fetchEvolutionPairing(
+  instance: string,
+  phone: string,
+): Promise<{ pairingCode: string | null; qr: string | null }> {
+  if (!isEvolutionApiReady()) {
+    return { pairingCode: null, qr: null };
+  }
+
+  const number = normalizePhone(phone);
+  const result = await evoFetch(
+    `/instance/connect/${instance}?number=${encodeURIComponent(number)}`,
+    undefined,
+    12_000,
+  );
+  return {
+    pairingCode: extractPairingCode(result.json),
+    qr: extractQrBase64(result.json),
+  };
+}
+
 export async function ensureEvolutionInstance(instance: string): Promise<string | null> {
   if (!isEvolutionApiReady()) {
     throw new Error("WhatsApp ainda não está disponível");
@@ -222,7 +267,7 @@ export async function getEvolutionConnection(
   options?: { includeQr?: boolean },
 ): Promise<EvolutionConnection> {
   if (!isEvolutionApiReady()) {
-    return { configured: false, state: "unknown", qr: null };
+    return { configured: false, state: "unknown", qr: null, pairingCode: null };
   }
 
   const state = await getEvolutionState(instance);
@@ -233,5 +278,6 @@ export async function getEvolutionConnection(
     configured: true,
     state: qr && state === "close" ? "connecting" : state,
     qr,
+    pairingCode: null,
   };
 }

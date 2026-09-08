@@ -5,18 +5,21 @@ import { fail, ok, type ActionResult } from "@/lib/action-result";
 import {
   ensureEvolutionInstance,
   evolutionInstanceName,
+  fetchEvolutionPairing,
   getEvolutionConnection,
   isEvolutionApiReady,
   logoutEvolutionInstance,
   type EvolutionState,
 } from "@/lib/evolution";
 import { prisma } from "@/lib/prisma";
+import { normalizePhone } from "@/lib/utils";
 
 export type WhatsAppStatus = {
   configured: boolean;
   connected: boolean;
   state: EvolutionState;
   qr: string | null;
+  pairingCode: string | null;
 };
 
 function instanceName(user: { evolutionInstance: string | null; slug: string }) {
@@ -32,19 +35,33 @@ async function persistInstance(userId: string, current: string | null, name: str
   }
 }
 
-function toStatus(connection: Awaited<ReturnType<typeof getEvolutionConnection>>): WhatsAppStatus {
+function toStatus(
+  connection: Awaited<ReturnType<typeof getEvolutionConnection>>,
+  extra?: { qr?: string | null; pairingCode?: string | null },
+): WhatsAppStatus {
   return {
     configured: connection.configured,
     connected: connection.state === "open",
     state: connection.state,
-    qr: connection.qr,
+    qr: extra?.qr ?? connection.qr,
+    pairingCode: extra?.pairingCode ?? connection.pairingCode,
+  };
+}
+
+function emptyStatus(configured: boolean, connected = false): WhatsAppStatus {
+  return {
+    configured,
+    connected,
+    state: connected ? "open" : "close",
+    qr: null,
+    pairingCode: null,
   };
 }
 
 export async function getWhatsAppStatus(): Promise<ActionResult<WhatsAppStatus>> {
   try {
     if (!isEvolutionApiReady()) {
-      return ok({ configured: false, connected: false, state: "unknown", qr: null });
+      return ok(emptyStatus(false));
     }
 
     const user = await requireUser();
@@ -68,15 +85,55 @@ export async function startWhatsAppConnection(): Promise<ActionResult<WhatsAppSt
     const connection = await getEvolutionConnection(name);
 
     return ok(
-      toStatus({
-        ...connection,
-        qr: qr ?? connection.qr,
-        state: connection.state === "open" ? "open" : "connecting",
-      }),
+      toStatus(
+        {
+          ...connection,
+          state: connection.state === "open" ? "open" : "connecting",
+        },
+        { qr: qr ?? connection.qr, pairingCode: null },
+      ),
     );
   } catch (error) {
     console.error("[whatsapp] startWhatsAppConnection:", error);
     return fail("Não foi possível gerar o QR do WhatsApp");
+  }
+}
+
+export async function startWhatsAppPairing(rawPhone: unknown): Promise<ActionResult<WhatsAppStatus>> {
+  const phone = normalizePhone(String(rawPhone ?? ""));
+  if (phone.length < 9) {
+    return fail("Indique o telemóvel do WhatsApp do negócio");
+  }
+
+  try {
+    if (!isEvolutionApiReady()) {
+      return fail("WhatsApp ainda não está disponível. Tente mais tarde.");
+    }
+
+    const user = await requireUser();
+    const name = instanceName(user);
+    await persistInstance(user.id, user.evolutionInstance, name);
+    await ensureEvolutionInstance(name);
+    const pairing = await fetchEvolutionPairing(name, phone);
+    const connection = await getEvolutionConnection(name);
+
+    if (connection.state === "open") {
+      return ok(toStatus({ ...connection, state: "open" }));
+    }
+
+    if (!pairing.pairingCode) {
+      return fail("Não foi possível gerar o código. Tente outra vez ou use o QR noutro ecrã.");
+    }
+
+    return ok(
+      toStatus(
+        { ...connection, state: "connecting" },
+        { pairingCode: pairing.pairingCode, qr: null },
+      ),
+    );
+  } catch (error) {
+    console.error("[whatsapp] startWhatsAppPairing:", error);
+    return fail("Não foi possível gerar o código do WhatsApp");
   }
 }
 
@@ -90,18 +147,10 @@ export async function relinkWhatsApp(): Promise<ActionResult<WhatsAppStatus>> {
     const name = instanceName(user);
     await persistInstance(user.id, user.evolutionInstance, name);
     await logoutEvolutionInstance(name);
-    const qr = await ensureEvolutionInstance(name);
-    const connection = await getEvolutionConnection(name);
 
-    return ok(
-      toStatus({
-        ...connection,
-        qr: qr ?? connection.qr,
-        state: "connecting",
-      }),
-    );
+    return ok(emptyStatus(true));
   } catch (error) {
     console.error("[whatsapp] relinkWhatsApp:", error);
-    return fail("Não foi possível gerar um novo QR");
+    return fail("Não foi possível desligar o WhatsApp");
   }
 }

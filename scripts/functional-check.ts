@@ -17,7 +17,7 @@ import { readSessionToken, signSessionToken } from "../lib/session-token";
 import { buildDepositRequestMessage, buildBusinessAlertMessage } from "../lib/notifications";
 import { depositSettingsSchema, publicBookingSchema } from "../lib/validations";
 import { extractEvolutionInstance } from "../lib/whatsapp-cancel";
-import { extractEvolutionOwnerPhone } from "../lib/evolution";
+import { extractEvolutionOwnerPhone, extractPairingCode, formatPairingCode } from "../lib/evolution";
 import { businessAlertSenderInstance } from "../lib/notifications";
 
 let failed = 0;
@@ -85,6 +85,16 @@ function testWebhookParse() {
     extractEvolutionInstance({ instance: { instanceName: "barbearia-x" } }) === "barbearia-x",
   );
   assert("vazio se faltar", extractEvolutionInstance({ data: {} }) === "");
+  assert(
+    "lê pairingCode no topo",
+    extractPairingCode({ pairingCode: "abcd-efgh" }) === "ABCDEFGH",
+  );
+  assert(
+    "lê pairingCode dentro de qrcode",
+    extractPairingCode({ qrcode: { pairingCode: "WZYEH1YY" } }) === "WZYEH1YY",
+  );
+  assert("pairingCode em falta", extractPairingCode({ base64: "xx" }) === null);
+  assert("formata código de 8", formatPairingCode("abcdefgh") === "ABCD-EFGH");
 }
 
 function testBusinessAlertRouting() {
@@ -289,6 +299,9 @@ function testSourceGuards() {
   assert("webhook não aceita ?secret=", !webhook.includes('get("secret")'));
   const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
   assert("README não publica a password demo", !readme.includes("demo1234"));
+  const whatsapp = readFileSync(new URL("../actions/whatsapp.ts", import.meta.url), "utf8");
+  assert("liga WhatsApp com código no telemóvel", whatsapp.includes("startWhatsAppPairing"));
+  assert("pede o número na Evolution", whatsapp.includes("fetchEvolutionPairing"));
 }
 
 async function main() {
