@@ -12,6 +12,7 @@ import { clearSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { calendarDateInZone, DEFAULT_TIMEZONE } from "@/lib/timezone";
 import { normalizeIban } from "@/lib/deposit";
+import { isReservedSlug } from "@/lib/reserved-slugs";
 import { normalizePhone, slugify } from "@/lib/utils";
 import {
   depositSettingsSchema,
@@ -28,7 +29,8 @@ export async function updateProfile(rawInput: unknown): Promise<ActionResult> {
 
   try {
     const user = await requireUser();
-    const nextSlug = slugify(parsed.data.businessName) || user.slug;
+    const requested = slugify(parsed.data.businessName) || user.slug;
+    const nextSlug = isReservedSlug(requested) ? `${requested}-espaco` : requested;
 
     const clash = await prisma.user.findFirst({
       where: { slug: nextSlug, id: { not: user.id } },

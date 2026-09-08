@@ -201,7 +201,7 @@ export default async function DashboardPage() {
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
               Sem marcações para hoje. Partilhe o link{" "}
-              <span className="font-medium text-foreground">/agendar/{user.slug}</span> com os clientes.
+              <span className="font-medium text-foreground">/{user.slug}</span> com os clientes.
             </CardContent>
           </Card>
         ) : (

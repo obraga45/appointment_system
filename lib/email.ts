@@ -53,7 +53,7 @@ export async function notifyOwnerAuthEvent(input: {
     lines.push(`Telemóvel: ${input.phone}`);
   }
   if (input.slug) {
-    lines.push(`Link: https://${BRAND.domain}/agendar/${input.slug}`);
+    lines.push(`Link: https://${BRAND.domain}/${input.slug}`);
   }
   if (input.ip) {
     lines.push(`IP: ${input.ip}`);

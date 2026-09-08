@@ -1,0 +1,57 @@
+import { notFound } from "next/navigation";
+import { BookingWizard } from "@/components/booking-wizard";
+import { SiteFooter } from "@/components/site-footer";
+import { BRAND } from "@/lib/brand";
+import { createBookingChallenge } from "@/lib/booking-challenge";
+import { businessAcceptsDeposit, depositFromUser } from "@/lib/deposit";
+import { getPublicBusiness } from "@/lib/public-business";
+import { formatCurrency } from "@/lib/utils";
+
+export async function publicBookingMetadata(businessSlug: string) {
+  const business = await getPublicBusiness(businessSlug);
+  return {
+    title: business ? `Agendar em ${business.businessName}` : "Agendar",
+  };
+}
+
+export async function PublicBookingPage({ businessSlug }: { businessSlug: string }) {
+  const business = await getPublicBusiness(businessSlug);
+  if (!business) {
+    notFound();
+  }
+
+  const challenge = await createBookingChallenge();
+  const deposit = depositFromUser(business);
+  const asksDeposit = businessAcceptsDeposit(deposit);
+
+  return (
+    <div className="flex min-h-screen flex-col bg-[radial-gradient(circle_at_top,oklch(0.93_0.04_85),transparent_45%)]">
+      <div className="mx-auto w-full max-w-xl flex-1 px-4 py-6 sm:py-10">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary sm:text-sm">{BRAND.name}</p>
+        <h1 className="mt-2 font-serif text-3xl font-semibold sm:text-4xl">{business.businessName}</h1>
+        <p className="mt-2 text-muted-foreground">
+          {asksDeposit
+            ? `Veja os dias já ocupados, escolha um horário livre e envie o sinal de ${formatCurrency(deposit.amount ?? 0)} para confirmar. O dinheiro vai directo a este espaço.`
+            : "Veja os dias já ocupados, escolha um horário livre e deixe um número com WhatsApp. Recebe confirmação automática."}
+        </p>
+        <div className="mt-8">
+          <BookingWizard
+            businessSlug={business.slug}
+            userId={business.id}
+            businessName={business.businessName}
+            challenge={challenge}
+            deposit={asksDeposit ? deposit : null}
+            services={business.services.map((service) => ({
+              id: service.id,
+              name: service.name,
+              durationMinutes: service.durationMinutes,
+              price: service.price.toString(),
+              description: service.description,
+            }))}
+          />
+        </div>
+      </div>
+      <SiteFooter />
+    </div>
+  );
+}

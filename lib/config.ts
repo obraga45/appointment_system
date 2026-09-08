@@ -50,7 +50,7 @@ export function appUrl(): string {
 }
 
 export function publicBookingUrl(slug: string) {
-  return `${appUrl()}/agendar/${slug}`;
+  return `${appUrl()}/${slug}`;
 }
 
 export function publicCancelUrl(token: string) {

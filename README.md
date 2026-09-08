@@ -33,7 +33,7 @@ npm run dev
 Conta demo **apenas local** (depois de `npm run db:seed`): o terminal mostra o email e a password.
 Não cries esta conta em produção.
 
-Página pública local: http://localhost:3000/agendar/salao-oliveira
+Página pública local: http://localhost:3000/salao-oliveira (o caminho `/agendar/salao-oliveira` continua a funcionar).
 
 Em produção, `NEXT_PUBLIC_APP_URL=https://temvagas.pt`. `SESSION_SECRET` e `CRON_SECRET` devem ser valores longos e aleatórios.
 
@@ -41,7 +41,7 @@ Em produção, `NEXT_PUBLIC_APP_URL=https://temvagas.pt`. `SESSION_SECRET` e `CR
 
 App: Vercel (domínio temvagas.pt) · BD: Supabase.
 
-Links antigos `/book/...` redireccionam para `/agendar/...`.
+Links antigos `/book/...` redireccionam para `/agendar/...`. O link curto do espaço é `temvagas.pt/{slug}`.
 
 ### WhatsApp + lembretes
 
@@ -58,6 +58,6 @@ Webhook: `POST /api/webhooks/evolution` com o header `x-webhook-secret` (valor d
 | `/appointments` | Lista do dia/semana |
 | `/services` | Serviços |
 | `/settings` | Perfil, WhatsApp, sinal opcional, link, horários |
-| `/agendar/[slug]` | Página pública do cliente |
+| `/[slug]` ou `/agendar/[slug]` | Página pública do cliente |
 | `/agendar/cancel/[token]` | Cancelamento pelo cliente |
 | `/termos`, `/privacidade` | Textos legais |

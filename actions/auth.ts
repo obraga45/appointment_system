@@ -14,6 +14,7 @@ import { hashToken } from "@/lib/reminders";
 import { logSecurityEvent } from "@/lib/security-log";
 import { clearSession, hashPassword, setSession, verifyPassword } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { isReservedSlug } from "@/lib/reserved-slugs";
 import { slugify } from "@/lib/utils";
 import {
   forgotPasswordSchema,
@@ -24,10 +25,13 @@ import {
 
 async function uniqueSlug(businessName: string): Promise<string> {
   const base = slugify(businessName) || "negocio";
-  let candidate = base;
+  let candidate = isReservedSlug(base) ? `${base}-espaco` : base;
   let suffix = 2;
 
-  while (await prisma.user.findUnique({ where: { slug: candidate }, select: { id: true } })) {
+  while (
+    isReservedSlug(candidate) ||
+    (await prisma.user.findUnique({ where: { slug: candidate }, select: { id: true } }))
+  ) {
     candidate = `${base}-${suffix}`;
     suffix += 1;
   }

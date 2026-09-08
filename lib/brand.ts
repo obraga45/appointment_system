@@ -7,7 +7,7 @@ export const BRAND = {
 } as const;
 
 export function bookingPath(slug: string) {
-  return `/agendar/${slug}`;
+  return `/${slug}`;
 }
 
 export function cancelPath(token: string) {

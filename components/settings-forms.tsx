@@ -161,7 +161,7 @@ export function SettingsForms({
         <CardHeader>
           <CardTitle>Link do cliente</CardTitle>
           <CardDescription>
-            Cada espaço tem um endereço do tipo temvagas.pt/agendar/o-teu-salao. O cliente vê os dias ocupados e escolhe um horário livre.
+            Cada espaço tem um endereço curto, do tipo temvagas.pt/o-teu-salao. O cliente vê os dias ocupados e escolhe um horário livre.
           </CardDescription>
         </CardHeader>
         <CardContent>

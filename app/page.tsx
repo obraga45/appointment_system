@@ -48,7 +48,7 @@ export default function HomePage() {
               icon: Link2,
               step: "2",
               title: "Partilhas o link",
-              body: `${BRAND.domain}/agendar/o-teu-salao — o cliente vê o que está ocupado e escolhe um horário livre.`,
+              body: `${BRAND.domain}/o-teu-salao — o cliente vê o que está ocupado e escolhe um horário livre.`,
             },
             {
               icon: MessageCircle,
@@ -106,7 +106,7 @@ export default function HomePage() {
             <div>
               <dt className="font-medium">Como é o link dos clientes?</dt>
               <dd className="mt-1 text-muted-foreground">
-                {BRAND.domain}/agendar/nome-do-salao — cada espaço tem o seu.
+                {BRAND.domain}/nome-do-salao — cada espaço tem o seu. O caminho antigo /agendar/... também funciona.
               </dd>
             </div>
             <div>

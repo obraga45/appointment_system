@@ -17,7 +17,9 @@ import { readSessionToken, signSessionToken } from "../lib/session-token";
 import { buildDepositRequestMessage, buildBusinessAlertMessage } from "../lib/notifications";
 import { depositSettingsSchema, publicBookingSchema } from "../lib/validations";
 import { extractEvolutionInstance } from "../lib/whatsapp-cancel";
+import { bookingPath } from "../lib/brand";
 import { extractEvolutionOwnerPhone, extractPairingCode, formatPairingCode } from "../lib/evolution";
+import { isReservedSlug } from "../lib/reserved-slugs";
 import { businessAlertSenderInstance } from "../lib/notifications";
 
 let failed = 0;
@@ -197,6 +199,14 @@ function testDeposit() {
   assert("aviso ao espaço menciona o sinal", alert.includes("sinal"));
 }
 
+function testShortBookingLink() {
+  console.log("\nLink curto");
+  assert("login é reservado", isReservedSlug("login"));
+  assert("agendar é reservado", isReservedSlug("Agendar"));
+  assert("nome de salão não é reservado", !isReservedSlug("salao-oliveira"));
+  assert("caminho público é /slug", bookingPath("salao-oliveira") === "/salao-oliveira");
+}
+
 function testBookingSchema() {
   console.log("\nValidação de marcação pública");
   const base = {
@@ -303,6 +313,8 @@ function testSourceGuards() {
   assert("webhook não aceita ?secret=", !webhook.includes('get("secret")'));
   const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
   assert("README não publica a password demo", !readme.includes("demo1234"));
+  const config = readFileSync(new URL("../lib/config.ts", import.meta.url), "utf8");
+  assert("link público curto sem /agendar/", config.includes("`/${slug}`") || config.includes("/${slug}"));
   const whatsapp = readFileSync(new URL("../actions/whatsapp.ts", import.meta.url), "utf8");
   assert("liga WhatsApp com código no telemóvel", whatsapp.includes("startWhatsAppPairing"));
   assert("pede o número na Evolution", whatsapp.includes("fetchEvolutionPairing"));
@@ -317,6 +329,7 @@ async function main() {
   testWebhookParse();
   testBusinessAlertRouting();
   testDeposit();
+  testShortBookingLink();
   testBookingSchema();
   testAvailability();
   testSourceGuards();

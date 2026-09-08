@@ -114,7 +114,7 @@ async function main() {
   }
 
   console.log("Conta demo: demo@temvagas.pt / demo1234");
-  console.log("Página pública: /agendar/salao-oliveira");
+  console.log("Página pública: /salao-oliveira");
 }
 
 main()
