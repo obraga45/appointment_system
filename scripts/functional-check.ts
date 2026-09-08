@@ -14,7 +14,7 @@ import { createBookingChallenge, verifyBookingChallenge } from "../lib/booking-c
 import { hashToken, newCancelToken } from "../lib/reminders";
 import { secretsEqual } from "../lib/secrets";
 import { readSessionToken, signSessionToken } from "../lib/session-token";
-import { buildDepositRequestMessage, buildBusinessAlertMessage } from "../lib/notifications";
+import { buildDepositRequestMessage, buildBusinessAlertMessage, evolutionTextPayload } from "../lib/notifications";
 import { depositSettingsSchema, publicBookingSchema } from "../lib/validations";
 import { extractEvolutionInstance } from "../lib/whatsapp-cancel";
 import { bookingPath } from "../lib/brand";
@@ -339,6 +339,10 @@ function testSourceGuards() {
   const whatsapp = readFileSync(new URL("../actions/whatsapp.ts", import.meta.url), "utf8");
   assert("liga WhatsApp com código no telemóvel", whatsapp.includes("startWhatsAppPairing"));
   assert("pede o número na Evolution", whatsapp.includes("fetchEvolutionPairing"));
+  const payload = evolutionTextPayload("351912345678", "Olá");
+  assert("envio sem composing", payload.presence === "paused" && payload.options.presence === "paused");
+  assert("envio sem delay de a escrever", payload.delay === 0);
+  assert("envio sem pré-visualização de links", payload.linkPreview === false);
 }
 
 async function main() {

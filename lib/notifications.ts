@@ -62,7 +62,7 @@ function isConfigured(provider: MessageProvider | "none"): boolean {
   return false;
 }
 
-async function postJson(url: string, body: unknown, headers: HeadersInit) {
+async function postJson(url: string, body: unknown, headers: HeadersInit, timeoutMs = 15_000) {
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -70,12 +70,31 @@ async function postJson(url: string, body: unknown, headers: HeadersInit) {
       ...headers,
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
+    cache: "no-store",
   });
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
     throw new Error(`HTTP ${response.status}: ${text.slice(0, 400)}`);
   }
+}
+
+/** Sem «a escrever»: delay>0 na Evolution dispara composing e o iPhone fica à espera da mensagem. */
+export function evolutionTextPayload(phone: string, text: string) {
+  return {
+    number: phone,
+    text,
+    delay: 0,
+    linkPreview: false,
+    presence: "paused",
+    textMessage: { text },
+    options: {
+      delay: 0,
+      presence: "paused",
+      linkPreview: false,
+    },
+  };
 }
 
 async function sendViaEvolution(phone: string, message: string, instanceName?: string | null) {
@@ -86,7 +105,7 @@ async function sendViaEvolution(phone: string, message: string, instanceName?: s
   }
   await postJson(
     `${base}/message/sendText/${instance}`,
-    { number: phone, text: message },
+    evolutionTextPayload(phone, message),
     { apikey: readEnv("EVOLUTION_API_KEY") },
   );
 }
