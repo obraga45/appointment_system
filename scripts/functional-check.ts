@@ -295,6 +295,27 @@ function testAvailability() {
     now,
   });
   assert("horário ocupado não sai em generateTimeSlots", !freeTimes.includes("09:00"));
+
+  const lunchHour: WorkingHour = {
+    ...workingHour,
+    startTime: "08:00",
+    endTime: "18:00",
+    breakStart: "11:00",
+    breakEnd: "12:00",
+  };
+  const lunchSlots = generateDaySlots({
+    date,
+    timeZone,
+    durationMinutes: 90,
+    workingHour: lunchHour,
+    existing: [],
+    now,
+  });
+  const byTime = Object.fromEntries(lunchSlots.map((slot) => [slot.time, slot.state]));
+  assert("09:30 cabe antes da pausa das 11h", byTime["09:30"] === "available");
+  assert("09:45 não é pausa, o serviço não acaba a tempo", byTime["09:45"] === "unfit");
+  assert("11:00 é a pausa", byTime["11:00"] === "break");
+  assert("12:00 já está livre", byTime["12:00"] === "available");
 }
 
 function testSourceGuards() {

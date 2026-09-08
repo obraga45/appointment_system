@@ -470,6 +470,7 @@ function SlotGroups({ slots, onPick }: { slots: TimeSlot[]; onPick: (time: strin
                     !available && "cursor-not-allowed border-dashed bg-muted text-muted-foreground line-through",
                     slot.state === "occupied" && "bg-rose-50 text-rose-700/80",
                     slot.state === "break" && "bg-amber-50 text-amber-800/80",
+                    slot.state === "unfit" && "bg-amber-50/60 text-amber-900/70",
                     slot.state === "blocked" && "bg-muted text-muted-foreground",
                   )}
                 >
@@ -479,6 +480,9 @@ function SlotGroups({ slots, onPick }: { slots: TimeSlot[]; onPick: (time: strin
                   ) : null}
                   {slot.state === "break" ? (
                     <span className="hidden font-normal no-underline sm:inline"> pausa</span>
+                  ) : null}
+                  {slot.state === "unfit" ? (
+                    <span className="hidden font-normal no-underline sm:inline"> não cabe</span>
                   ) : null}
                   {slot.state === "blocked" ? (
                     <span className="hidden font-normal no-underline sm:inline"> encerrado</span>

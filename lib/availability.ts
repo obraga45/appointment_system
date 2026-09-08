@@ -4,7 +4,7 @@ import { calendarDateInZone, calendarWeekday, zonedDateTime } from "@/lib/timezo
 
 const SLOT_STEP_MINUTES = 15;
 
-export type SlotState = "available" | "occupied" | "break" | "blocked" | "past";
+export type SlotState = "available" | "occupied" | "break" | "unfit" | "blocked" | "past";
 
 export type TimeSlot = {
   time: string;
@@ -133,6 +133,7 @@ function walkDaySlots<T>(
     endMs: number;
     occupied: boolean;
     onBreak: boolean;
+    overlapsBreak: boolean;
     blocked: boolean;
     past: boolean;
   }) => T | void,
@@ -164,7 +165,8 @@ function walkDaySlots<T>(
   while (cursorMs + durationMs <= dayEndMs) {
     const endMs = cursorMs + durationMs;
     const occupied = busy.some(([start, end]) => cursorMs < end && endMs > start);
-    const onBreak = Boolean(pause && cursorMs < pause[1] && endMs > pause[0]);
+    const overlapsBreak = Boolean(pause && cursorMs < pause[1] && endMs > pause[0]);
+    const onBreak = Boolean(pause && cursorMs >= pause[0] && cursorMs < pause[1]);
     const blocked = blockedRanges.some(([start, end]) => cursorMs < end && endMs > start);
     const past = cursorMs < nowMs;
     const result = onSlot({
@@ -173,6 +175,7 @@ function walkDaySlots<T>(
       endMs,
       occupied,
       onBreak,
+      overlapsBreak,
       blocked,
       past,
     });
@@ -203,9 +206,11 @@ export function generateDaySlots(input: {
         ? "blocked"
         : slot.onBreak
           ? "break"
-          : slot.past
-            ? "past"
-            : "available") as SlotState,
+          : slot.overlapsBreak
+            ? "unfit"
+            : slot.past
+              ? "past"
+              : "available") as SlotState,
   }));
 }
 
@@ -220,7 +225,7 @@ export function generateTimeSlots(input: {
 }): string[] {
   const times: string[] = [];
   walkDaySlots(input, (slot) => {
-    if (!slot.occupied && !slot.onBreak && !slot.blocked && !slot.past) {
+    if (!slot.occupied && !slot.onBreak && !slot.overlapsBreak && !slot.blocked && !slot.past) {
       times.push(slot.time);
     }
   });
@@ -287,7 +292,7 @@ export function buildAvailabilityRange(input: {
         (slot) => {
           if (slot.occupied) {
             occupiedCount += 1;
-          } else if (!slot.past && !slot.onBreak && !slot.blocked) {
+          } else if (!slot.past && !slot.onBreak && !slot.overlapsBreak && !slot.blocked) {
             availableCount += 1;
           }
         },

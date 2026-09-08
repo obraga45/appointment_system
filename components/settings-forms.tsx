@@ -287,7 +287,8 @@ export function SettingsForms({
           <CardDescription>
             Este é o horário semanal. Para fechar um dia ou um intervalo por imprevisto, use
             Encerramentos pontuais, mais abaixo. Preencha a pausa (almoço ou descanso) para bloquear
-            esses intervalos; deixe em branco se não houver pausa.
+            esses intervalos e os horários em que o serviço ainda não terminaria. Deixe em branco se
+            não houver pausa.
           </CardDescription>
         </CardHeader>
         <CardContent>
