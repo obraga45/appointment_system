@@ -94,6 +94,10 @@ function testWebhookParse() {
     extractPairingCode({ qrcode: { pairingCode: "WZYEH1YY" } }) === "WZYEH1YY",
   );
   assert("pairingCode em falta", extractPairingCode({ base64: "xx" }) === null);
+  assert(
+    "lê pairingCode em data.qrcode",
+    extractPairingCode({ data: { qrcode: { pairingCode: "AB12CD34" } } }) === "AB12CD34",
+  );
   assert("formata código de 8", formatPairingCode("abcdefgh") === "ABCD-EFGH");
 }
 

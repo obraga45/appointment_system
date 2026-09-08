@@ -78,17 +78,25 @@ export function extractQrBase64(payload: unknown): string | null {
   return raw.startsWith("data:") ? raw : `data:image/png;base64,${raw}`;
 }
 
+function pairingCandidatesFrom(record: Record<string, unknown>): unknown[] {
+  const qrcode = asRecord(record.qrcode);
+  const data = asRecord(record.data);
+  const dataQr = asRecord(data.qrcode);
+  return [record.pairingCode, record.pairing_code, qrcode.pairingCode, data.pairingCode, dataQr.pairingCode];
+}
+
 export function extractPairingCode(payload: unknown): string | null {
-  const root = asRecord(payload);
-  const qrcode = asRecord(root.qrcode);
-  const candidates = [root.pairingCode, qrcode.pairingCode];
-  for (const candidate of candidates) {
-    if (typeof candidate !== "string") {
-      continue;
-    }
-    const compact = candidate.replace(/[\s-]/g, "").toUpperCase();
-    if (compact.length >= 6 && compact.length <= 12) {
-      return compact;
+  const items = Array.isArray(payload) ? payload : [payload];
+  for (const item of items) {
+    const root = asRecord(item);
+    for (const candidate of pairingCandidatesFrom(root)) {
+      if (typeof candidate !== "string") {
+        continue;
+      }
+      const compact = candidate.replace(/[\s-]/g, "").toUpperCase();
+      if (compact.length >= 6 && compact.length <= 12) {
+        return compact;
+      }
     }
   }
   return null;
@@ -206,23 +214,85 @@ export async function fetchEvolutionQr(instance: string): Promise<string | null>
   return extractQrBase64(result.json);
 }
 
+function payloadKeys(payload: unknown): string[] {
+  const root = asRecord(payload);
+  return Object.keys(root).slice(0, 12);
+}
+
+async function ensureEvolutionInstanceExists(instance: string): Promise<void> {
+  await evoFetch(
+    "/instance/create",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        instanceName: instance,
+        qrcode: false,
+        integration: "WHATSAPP-BAILEYS",
+      }),
+    },
+    12_000,
+  );
+}
+
 export async function fetchEvolutionPairing(
   instance: string,
   phone: string,
-): Promise<{ pairingCode: string | null; qr: string | null }> {
+): Promise<{ pairingCode: string | null; qr: string | null; timedOut: boolean; status: number }> {
   if (!isEvolutionApiReady()) {
-    return { pairingCode: null, qr: null };
+    return { pairingCode: null, qr: null, timedOut: false, status: 0 };
   }
 
   const number = normalizePhone(phone);
-  const result = await evoFetch(
-    `/instance/connect/${instance}?number=${encodeURIComponent(number)}`,
-    undefined,
-    12_000,
+  const created = await evoFetch(
+    "/instance/create",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        instanceName: instance,
+        qrcode: true,
+        number,
+        integration: "WHATSAPP-BAILEYS",
+      }),
+    },
+    15_000,
   );
+  let pairingCode = extractPairingCode(created.json);
+  let result = created;
+
+  if (!pairingCode) {
+    await ensureEvolutionInstanceExists(instance);
+    const state = await getEvolutionState(instance);
+    if (state === "connecting") {
+      await logoutEvolutionInstance(instance);
+    }
+    result = await evoFetch(
+      `/instance/connect/${instance}?number=${encodeURIComponent(number)}`,
+      undefined,
+      15_000,
+    );
+    pairingCode = extractPairingCode(result.json);
+  }
+
+  if (!pairingCode) {
+    const timedOut = result.status === 0 && asRecord(result.json).error === "timeout";
+    console.warn("[whatsapp] Evolution não devolveu pairingCode", {
+      status: result.status,
+      timedOut,
+      keys: payloadKeys(result.json),
+    });
+    return {
+      pairingCode: null,
+      qr: extractQrBase64(result.json),
+      timedOut,
+      status: result.status,
+    };
+  }
+
   return {
-    pairingCode: extractPairingCode(result.json),
+    pairingCode,
     qr: extractQrBase64(result.json),
+    timedOut: false,
+    status: result.status,
   };
 }
 

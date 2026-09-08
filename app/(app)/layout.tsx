@@ -4,6 +4,7 @@ import { AppSidebar, MobileBottomNav, MobileTopBar } from "@/components/app-side
 import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 export default async function DashboardGroupLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();

@@ -113,7 +113,6 @@ export async function startWhatsAppPairing(rawPhone: unknown): Promise<ActionRes
     const user = await requireUser();
     const name = instanceName(user);
     await persistInstance(user.id, user.evolutionInstance, name);
-    await ensureEvolutionInstance(name);
     const pairing = await fetchEvolutionPairing(name, phone);
     const connection = await getEvolutionConnection(name);
 
@@ -122,6 +121,9 @@ export async function startWhatsAppPairing(rawPhone: unknown): Promise<ActionRes
     }
 
     if (!pairing.pairingCode) {
+      if (pairing.timedOut) {
+        return fail("O WhatsApp demorou a responder. Tente outra vez.");
+      }
       return fail("Não foi possível gerar o código. Tente outra vez ou use o QR noutro ecrã.");
     }
 
