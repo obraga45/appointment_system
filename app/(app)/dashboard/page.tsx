@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
 import { publicBookingUrl } from "@/lib/config";
+import { evolutionInstanceName, getEvolutionState, isEvolutionApiReady } from "@/lib/evolution";
 import { prisma } from "@/lib/prisma";
 import { STATUS_LABELS, STATUS_VARIANT } from "@/lib/status";
 import { DEFAULT_TIMEZONE, endOfZonedDay, startOfZonedDay } from "@/lib/timezone";
@@ -83,6 +84,11 @@ export default async function DashboardPage() {
     }),
   ]);
 
+  const whatsappConnected =
+    isEvolutionApiReady() &&
+    (await getEvolutionState(evolutionInstanceName(user.evolutionInstance || user.slug))) ===
+      "open";
+
   return (
     <div className="mx-auto max-w-5xl space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -143,7 +149,7 @@ export default async function DashboardPage() {
         </section>
       ) : null}
 
-      {failedReminder ? (
+      {failedReminder && !whatsappConnected ? (
         <Card className="border-destructive/40">
           <CardContent className="py-4 text-sm">
             Há confirmações ou lembretes que falharam. Volte a ligar o WhatsApp neste cartão ou em Definições.

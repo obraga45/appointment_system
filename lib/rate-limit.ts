@@ -1,10 +1,9 @@
 import { headers } from "next/headers";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { isProduction, isRedisConfigured } from "@/lib/config";
+import { isRedisConfigured } from "@/lib/config";
 
 const memoryBuckets = new Map<string, number[]>();
-let warnedMissingRedis = false;
 
 function prune(timestamps: number[], windowMs: number, now: number) {
   return timestamps.filter((stamp) => now - stamp < windowMs);
@@ -51,11 +50,6 @@ export async function rateLimit(input: {
   if (isRedisConfigured()) {
     const result = await redisLimiter(input.name, input.limit, input.windowSec).limit(identity);
     return result.success;
-  }
-
-  if (isProduction() && !warnedMissingRedis) {
-    warnedMissingRedis = true;
-    console.warn("[rate-limit] Upstash Redis não configurado; a usar memória do processo (ineficaz com várias instâncias).");
   }
 
   return memoryLimit(identity, input.limit, input.windowSec * 1000);
