@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/phone-input";
 import { WEEKDAY_LABELS } from "@/lib/availability";
 import { COMMON_TIMEZONES } from "@/lib/timezone";
 
@@ -189,7 +190,7 @@ export function SettingsForms({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="phone">Telemóvel para avisos</Label>
-              <Input id="phone" name="phone" defaultValue={profile.phone ?? ""} placeholder="+351 9xx xxx xxx" />
+              <PhoneInput id="phone" name="phone" defaultValue={profile.phone ?? ""} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="timezone">Fuso horário</Label>
@@ -256,11 +257,10 @@ export function SettingsForms({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="depositMbWay">MB Way do espaço</Label>
-              <Input
+              <PhoneInput
                 id="depositMbWay"
                 name="depositMbWay"
                 defaultValue={deposit.mbWay || profile.phone || ""}
-                placeholder="+351 9xx xxx xxx"
                 disabled={!depositEnabled}
               />
             </div>

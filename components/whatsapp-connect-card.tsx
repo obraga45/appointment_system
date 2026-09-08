@@ -13,8 +13,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/phone-input";
+import { ptMobileLocalDigits } from "@/lib/utils";
 function formatPairingCode(code: string) {
   const compact = code.replace(/[\s-]/g, "").toUpperCase();
   if (compact.length === 8) {
@@ -52,13 +53,13 @@ export function WhatsAppConnectCard({
       pairingCode: null,
     },
   );
-  const [phone, setPhone] = useState(defaultPhone);
+  const [phone, setPhone] = useState(() => ptMobileLocalDigits(defaultPhone));
   const [showQr, setShowQr] = useState(false);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
     if (defaultPhone && !phone) {
-      setPhone(defaultPhone);
+      setPhone(ptMobileLocalDigits(defaultPhone));
     }
   }, [defaultPhone, phone]);
 
@@ -180,17 +181,15 @@ export function WhatsAppConnectCard({
                 >
                   <div className="grid gap-2">
                     <Label htmlFor="whatsappPhone">Telemóvel deste WhatsApp</Label>
-                    <Input
+                    <PhoneInput
                       id="whatsappPhone"
                       value={phone}
-                      onChange={(event) => setPhone(event.target.value)}
-                      placeholder="9xx xxx xxx"
-                      inputMode="tel"
-                      autoComplete="tel"
+                      onValueChange={setPhone}
                       required
                     />
+                    <p className="text-xs text-muted-foreground">Portugal (+351). Só os 9 dígitos deste telemóvel.</p>
                   </div>
-                  <Button type="submit" className="w-full sm:w-auto" disabled={pending || !phone.trim()}>
+                  <Button type="submit" className="w-full sm:w-auto" disabled={pending || phone.length !== 9}>
                     {pending ? "A gerar código…" : "Ligar neste telemóvel"}
                   </Button>
                 </form>

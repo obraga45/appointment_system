@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PhoneInput } from "@/components/phone-input";
 import { formatCurrency } from "@/lib/utils";
 
 type ServiceOption = {
@@ -178,16 +179,9 @@ export function NewAppointmentForm({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="clientPhone">Telemóvel (WhatsApp)</Label>
-              <Input
-                id="clientPhone"
-                name="clientPhone"
-                required
-                placeholder="9xx xxx xxx"
-                inputMode="tel"
-                autoComplete="tel"
-              />
+              <PhoneInput id="clientPhone" name="clientPhone" required />
               <p className="text-xs text-muted-foreground">
-                A confirmação e os lembretes vão por WhatsApp para este número.
+                Portugal (+351). Escreve só os 9 dígitos. A confirmação vai por WhatsApp.
               </p>
             </div>
           </div>

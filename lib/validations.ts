@@ -1,19 +1,26 @@
 import { z } from "zod";
 import { isValidTimeZone } from "@/lib/timezone";
+import { isPortugueseMobile, normalizePhone } from "@/lib/utils";
 
 const phoneSchema = z
   .string()
   .trim()
-  .min(9, "Indique um telemóvel válido")
-  .max(20, "Telemóvel demasiado longo")
-  .regex(/^[\d+\s()-]+$/, "O telemóvel só pode conter dígitos e símbolos +() -");
+  .min(1, "Indique um telemóvel válido")
+  .transform((value) => normalizePhone(value))
+  .refine(isPortugueseMobile, "Indique um telemóvel português de 9 dígitos");
+
+const optionalPhoneSchema = z
+  .string()
+  .trim()
+  .transform((value) => (value ? normalizePhone(value) : ""))
+  .refine((value) => value === "" || isPortugueseMobile(value), "Indique um telemóvel português de 9 dígitos");
 
 export const registerSchema = z.object({
   name: z.string().trim().min(2, "Nome demasiado curto").max(80),
   email: z.string().trim().email("Email inválido").toLowerCase(),
   password: z.string().min(8, "A palavra-passe deve ter pelo menos 8 caracteres"),
   businessName: z.string().trim().min(2, "Nome do negócio demasiado curto").max(100),
-  phone: phoneSchema.optional().or(z.literal("")),
+  phone: optionalPhoneSchema,
   acceptTerms: z
     .boolean()
     .refine((value) => value === true, "Tem de aceitar os termos de utilização"),
@@ -166,7 +173,7 @@ export const scheduleExceptionSchema = z
 export const profileSchema = z.object({
   name: z.string().trim().min(2).max(80),
   businessName: z.string().trim().min(2).max(100),
-  phone: phoneSchema.optional().or(z.literal("")),
+  phone: optionalPhoneSchema,
   timezone: z
     .string()
     .min(1)

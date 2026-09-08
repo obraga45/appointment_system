@@ -15,32 +15,55 @@ export function slugify(value: string): string {
     .slice(0, 60);
 }
 
-/** Normaliza telemóveis PT/internacionais para E.164 sem o prefixo +. */
-export function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
+const PT_COUNTRY_CODE = "351";
+const PT_MOBILE = /^3519\d{8}$/;
 
-  if (digits.startsWith("351") && digits.length >= 12) {
-    return digits;
+function phoneDigits(phone: string): string {
+  let digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("00")) {
+    digits = digits.slice(2);
+  }
+  return digits;
+}
+
+/** 9 dígitos nacionais, mesmo que a pessoa cole +351 ou o indicativo duas vezes. */
+export function ptMobileLocalDigits(phone: string): string {
+  let digits = phoneDigits(phone);
+  while (digits.startsWith(PT_COUNTRY_CODE)) {
+    digits = digits.slice(PT_COUNTRY_CODE.length);
+  }
+  return digits.slice(0, 9);
+}
+
+/** Normaliza telemóveis PT para E.164 sem o prefixo +. */
+export function normalizePhone(phone: string): string {
+  let digits = phoneDigits(phone);
+  while (digits.startsWith(`${PT_COUNTRY_CODE}${PT_COUNTRY_CODE}`)) {
+    digits = digits.slice(PT_COUNTRY_CODE.length);
+  }
+
+  if (digits.startsWith(PT_COUNTRY_CODE) && digits.length >= 12) {
+    return digits.slice(0, 12);
   }
 
   if (digits.length === 9 && digits.startsWith("9")) {
-    return `351${digits}`;
-  }
-
-  if (digits.startsWith("00")) {
-    return digits.slice(2);
+    return `${PT_COUNTRY_CODE}${digits}`;
   }
 
   return digits;
 }
 
+export function isPortugueseMobile(phone: string): boolean {
+  return PT_MOBILE.test(normalizePhone(phone));
+}
+
 export function formatPhoneDisplay(phone: string): string {
   const normalized = normalizePhone(phone);
-  if (normalized.startsWith("351") && normalized.length === 12) {
+  if (normalized.startsWith(PT_COUNTRY_CODE) && normalized.length === 12) {
     const local = normalized.slice(3);
     return `+351 ${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`;
   }
-  return `+${normalized}`;
+  return normalized ? `+${normalized}` : "";
 }
 
 export function formatCurrency(value: number | string): string {

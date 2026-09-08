@@ -3,7 +3,7 @@ import { pt } from "date-fns/locale";
 import { readEnv } from "@/lib/config";
 import { formatIbanDisplay } from "@/lib/deposit";
 import { DEFAULT_TIMEZONE } from "@/lib/timezone";
-import { formatCurrency, formatPhoneDisplay, normalizePhone } from "@/lib/utils";
+import { formatCurrency, formatPhoneDisplay, isPortugueseMobile, normalizePhone } from "@/lib/utils";
 
 export type MessageProvider = "evolution" | "zapi";
 
@@ -132,7 +132,7 @@ export async function sendWhatsAppMessage(
   const provider = getProvider();
   const normalized = normalizePhone(phone);
 
-  if (!normalized || normalized.length < 9) {
+  if (!isPortugueseMobile(normalized)) {
     return { ok: false, provider, channel: "whatsapp", error: "Número de telemóvel inválido" };
   }
 

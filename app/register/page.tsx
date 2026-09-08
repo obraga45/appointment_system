@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/phone-input";
 import { BRAND } from "@/lib/brand";
 
 export default function RegisterPage() {
@@ -67,9 +68,9 @@ export default function RegisterPage() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="phone">Telemóvel</Label>
-              <Input id="phone" name="phone" placeholder="+351 9xx xxx xxx" />
+              <PhoneInput id="phone" name="phone" />
               <p className="text-xs text-muted-foreground">
-                Para receber um aviso quando um cliente marca.
+                Portugal (+351). Só os 9 dígitos, para o aviso quando um cliente marca.
               </p>
             </div>
             <div className="grid gap-2">

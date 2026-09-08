@@ -12,7 +12,7 @@ import {
   type EvolutionState,
 } from "@/lib/evolution";
 import { prisma } from "@/lib/prisma";
-import { normalizePhone } from "@/lib/utils";
+import { isPortugueseMobile, normalizePhone } from "@/lib/utils";
 
 export type WhatsAppStatus = {
   configured: boolean;
@@ -101,8 +101,8 @@ export async function startWhatsAppConnection(): Promise<ActionResult<WhatsAppSt
 
 export async function startWhatsAppPairing(rawPhone: unknown): Promise<ActionResult<WhatsAppStatus>> {
   const phone = normalizePhone(String(rawPhone ?? ""));
-  if (phone.length < 9) {
-    return fail("Indique o telemóvel do WhatsApp do negócio");
+  if (!isPortugueseMobile(phone)) {
+    return fail("Indique o telemóvel português deste WhatsApp (9 dígitos)");
   }
 
   try {

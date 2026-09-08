@@ -21,6 +21,7 @@ import { bookingPath } from "../lib/brand";
 import { extractEvolutionOwnerPhone, extractPairingCode, formatPairingCode } from "../lib/evolution";
 import { isReservedSlug } from "../lib/reserved-slugs";
 import { businessAlertSenderInstance } from "../lib/notifications";
+import { isPortugueseMobile, normalizePhone, ptMobileLocalDigits } from "../lib/utils";
 
 let failed = 0;
 let passed = 0;
@@ -207,6 +208,18 @@ function testShortBookingLink() {
   assert("caminho público é /slug", bookingPath("salao-oliveira") === "/salao-oliveira");
 }
 
+function testPhone() {
+  console.log("\nTelemóvel PT");
+  assert("9 dígitos ganham +351", normalizePhone("912345678") === "351912345678");
+  assert("já com +351 mantém", normalizePhone("+351 912 345 678") === "351912345678");
+  assert("indicativo repetido é corrigido", normalizePhone("351351912345678") === "351912345678");
+  assert("cola 00351", normalizePhone("00351912345678") === "351912345678");
+  assert("campo local tira o 351", ptMobileLocalDigits("351912345678") === "912345678");
+  assert("colar +351 no campo local", ptMobileLocalDigits("+351 912 345 678") === "912345678");
+  assert("é telemóvel PT", isPortugueseMobile("912 345 678"));
+  assert("rejeita curto", !isPortugueseMobile("91234567"));
+}
+
 function testBookingSchema() {
   console.log("\nValidação de marcação pública");
   const base = {
@@ -218,8 +231,27 @@ function testBookingSchema() {
   };
   assert("exige challenge", publicBookingSchema.safeParse(base).success === false);
   assert(
-    "aceita com challenge",
+    "aceita 9 dígitos sem indicativo",
     publicBookingSchema.safeParse({ ...base, challenge: "1234567890ab" }).success === true,
+  );
+  assert(
+    "aceita +351 colado",
+    publicBookingSchema.safeParse({ ...base, clientPhone: "+351 912 345 678", challenge: "1234567890ab" }).success ===
+      true,
+  );
+  assert(
+    "corrige indicativo a dobrar",
+    publicBookingSchema.safeParse({ ...base, clientPhone: "351351912345678", challenge: "1234567890ab" }).success ===
+      true,
+  );
+  assert(
+    "rejeita número curto",
+    publicBookingSchema.safeParse({ ...base, clientPhone: "123", challenge: "1234567890ab" }).success === false,
+  );
+  const parsed = publicBookingSchema.safeParse({ ...base, challenge: "1234567890ab" });
+  assert(
+    "grava com 351",
+    parsed.success && parsed.data.clientPhone === "351912345678",
   );
 }
 
@@ -339,6 +371,9 @@ function testSourceGuards() {
   const whatsapp = readFileSync(new URL("../actions/whatsapp.ts", import.meta.url), "utf8");
   assert("liga WhatsApp com código no telemóvel", whatsapp.includes("startWhatsAppPairing"));
   assert("pede o número na Evolution", whatsapp.includes("fetchEvolutionPairing"));
+  const phoneInput = readFileSync(new URL("../components/phone-input.tsx", import.meta.url), "utf8");
+  assert("campo mostra +351", phoneInput.includes("+351"));
+  assert("campo só pede 9 dígitos", phoneInput.includes("maxLength={9}"));
   const payload = evolutionTextPayload("351912345678", "Olá");
   assert("envio sem composing", payload.presence === "paused" && payload.options.presence === "paused");
   assert("envio sem delay de a escrever", payload.delay === 0);
@@ -354,6 +389,7 @@ async function main() {
   testWebhookParse();
   testBusinessAlertRouting();
   testDeposit();
+  testPhone();
   testShortBookingLink();
   testBookingSchema();
   testAvailability();

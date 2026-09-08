@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/phone-input";
 import {
   combineDateAndTime,
   WEEKDAY_SHORT,
@@ -391,17 +392,14 @@ export function BookingWizard({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="clientPhone">Telemóvel (WhatsApp)</Label>
-              <Input
+              <PhoneInput
                 id="clientPhone"
                 value={clientPhone}
-                onChange={(e) => setClientPhone(e.target.value)}
-                placeholder="9xx xxx xxx"
-                inputMode="tel"
-                autoComplete="tel"
+                onValueChange={setClientPhone}
                 required
               />
               <p className="text-xs text-muted-foreground">
-                A confirmação e os lembretes vão por WhatsApp para este número.
+                Portugal (+351). Escreve só os 9 dígitos. A confirmação vai por WhatsApp.
               </p>
             </div>
             <div className="grid gap-2">
@@ -422,7 +420,7 @@ export function BookingWizard({
               <Button variant="outline" className="w-full sm:w-auto" onClick={() => setStep("slot")}>
                 Voltar
               </Button>
-              <Button className="w-full sm:w-auto" onClick={confirm} disabled={pending || !clientName || !clientPhone}>
+              <Button className="w-full sm:w-auto" onClick={confirm} disabled={pending || !clientName || clientPhone.length !== 9}>
                 {pending
                   ? deposit
                     ? "A reservar…"
